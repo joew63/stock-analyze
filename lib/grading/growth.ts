@@ -1,6 +1,5 @@
 import { GROWTH_CURVES } from "./thresholds";
 import { scoreFromCurve } from "./interpolate";
-import { scoreToLetter } from "./letter";
 import { weightedAverage, type GradeResult, type MetricScore } from "./types";
 import { formatPercent } from "./format";
 import type { IncomeStatementPoint } from "@/lib/providers/types";
@@ -21,7 +20,6 @@ export function gradeGrowth(
   if (!incomeHistory || incomeHistory.length < 2) {
     return {
       category: "Growth",
-      letter: "F",
       score: 0,
       metrics: [],
       notes: ["Not enough income-statement history to grade growth."],
@@ -86,7 +84,6 @@ export function gradeGrowth(
 
   return {
     category: "Growth",
-    letter: scoreToLetter(avg ?? 0),
     score: avg ?? 0,
     metrics,
     notes,

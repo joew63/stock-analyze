@@ -25,4 +25,3 @@ export function gradeStock(bundle: StockDataBundle): StockGrades {
 }
 
 export type { GradeResult, MetricScore } from "./types";
-export type { Letter } from "./letter";

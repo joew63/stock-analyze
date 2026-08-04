@@ -1,6 +1,5 @@
 import { PROFITABILITY_CURVES } from "./thresholds";
 import { scoreFromCurve } from "./interpolate";
-import { scoreToLetter } from "./letter";
 import { weightedAverage, type GradeResult, type MetricScore } from "./types";
 import { formatPercent } from "./format";
 import type { FundamentalRatios } from "@/lib/providers/types";
@@ -11,7 +10,6 @@ export function gradeProfitability(
   if (!ratios) {
     return {
       category: "Profitability",
-      letter: "F",
       score: 0,
       metrics: [],
       notes: ["No fundamentals data available."],
@@ -86,7 +84,6 @@ export function gradeProfitability(
 
   return {
     category: "Profitability",
-    letter: scoreToLetter(avg ?? 0),
     score: avg ?? 0,
     metrics,
     notes,

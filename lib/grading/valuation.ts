@@ -1,6 +1,5 @@
 import { VALUATION_CURVES } from "./thresholds";
 import { scoreFromCurve } from "./interpolate";
-import { scoreToLetter } from "./letter";
 import { weightedAverage, type GradeResult, type MetricScore } from "./types";
 import { formatMultiple } from "./format";
 import type { FundamentalRatios } from "@/lib/providers/types";
@@ -9,7 +8,6 @@ export function gradeValuation(ratios: FundamentalRatios | null): GradeResult {
   if (!ratios) {
     return {
       category: "Valuation",
-      letter: "F",
       score: 0,
       metrics: [],
       notes: ["No fundamentals data available."],
@@ -94,7 +92,6 @@ export function gradeValuation(ratios: FundamentalRatios | null): GradeResult {
 
   return {
     category: "Valuation",
-    letter: scoreToLetter(avg ?? 0),
     score: avg ?? 0,
     metrics,
     notes,

@@ -1,7 +1,7 @@
 # Stock Analyzer
 
 A personal research tool: search a ticker and get a breakdown — a
-multi-timeframe price chart, key metrics, five brutally honest letter grades
+multi-timeframe price chart, key metrics, five brutally honest 0-100 ratings
 (Valuation, Growth, Profitability, Momentum, EPS & Revenue), a statistical
 price projection, analyst recommendation trend, a financial statements
 table, and recent news. Light mode by default, with a dark mode toggle.

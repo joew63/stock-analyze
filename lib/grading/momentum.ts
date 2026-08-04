@@ -1,6 +1,5 @@
 import { MOMENTUM_CURVES } from "./thresholds";
 import { scoreFromCurve } from "./interpolate";
-import { scoreToLetter } from "./letter";
 import { weightedAverage, type GradeResult, type MetricScore } from "./types";
 import { formatPercent } from "./format";
 import type { HistoricalPricePoint } from "@/lib/providers/types";
@@ -29,7 +28,6 @@ export function gradeMomentum(
   if (!priceHistory || priceHistory.length < 22) {
     return {
       category: "Momentum",
-      letter: "F",
       score: 0,
       metrics: [],
       notes: ["Not enough price history to grade momentum."],
@@ -117,7 +115,6 @@ export function gradeMomentum(
 
   return {
     category: "Momentum",
-    letter: scoreToLetter(avg ?? 0),
     score: avg ?? 0,
     metrics,
     notes,

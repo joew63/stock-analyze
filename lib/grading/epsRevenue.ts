@@ -1,6 +1,5 @@
 import { EPS_REVENUE_CURVES } from "./thresholds";
 import { scoreFromCurve } from "./interpolate";
-import { scoreToLetter } from "./letter";
 import { weightedAverage, type GradeResult, type MetricScore } from "./types";
 import { formatPercent } from "./format";
 import type { EarningsSurprise } from "@/lib/providers/types";
@@ -11,7 +10,6 @@ export function gradeEpsRevenue(
   if (!earnings || earnings.length === 0) {
     return {
       category: "EPS & Revenue",
-      letter: "F",
       score: 0,
       metrics: [],
       notes: ["No earnings-surprise history available."],
@@ -26,7 +24,6 @@ export function gradeEpsRevenue(
   if (recent.length === 0) {
     return {
       category: "EPS & Revenue",
-      letter: "F",
       score: 0,
       metrics: [],
       notes: ["Earnings data present but missing actual/estimate figures."],
@@ -104,7 +101,6 @@ export function gradeEpsRevenue(
 
   return {
     category: "EPS & Revenue",
-    letter: scoreToLetter(avg ?? 0),
     score: avg ?? 0,
     metrics,
     notes,

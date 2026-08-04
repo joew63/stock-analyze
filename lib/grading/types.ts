@@ -1,5 +1,3 @@
-import type { Letter } from "./letter";
-
 export interface MetricScore {
   key: string;
   label: string;
@@ -11,7 +9,6 @@ export interface MetricScore {
 
 export interface GradeResult {
   category: string;
-  letter: Letter;
   score: number;
   metrics: MetricScore[];
   notes: string[];

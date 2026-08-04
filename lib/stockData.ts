@@ -23,7 +23,14 @@ async function settle<T>(
   }
 }
 
-export class SymbolNotFoundError extends Error {}
+export class SymbolNotFoundError extends Error {
+  causes: string[];
+
+  constructor(message: string, causes: string[]) {
+    super(message);
+    this.causes = causes;
+  }
+}
 
 export async function getStockData(rawSymbol: string): Promise<StockData> {
   const symbol = rawSymbol.trim().toUpperCase();
@@ -51,7 +58,8 @@ export async function getStockData(rawSymbol: string): Promise<StockData> {
 
   if (!quote && !profile) {
     throw new SymbolNotFoundError(
-      `Could not find data for symbol "${symbol}". Check the ticker and try again.`
+      `Could not find data for symbol "${symbol}". Check the ticker and try again.`,
+      errors
     );
   }
 

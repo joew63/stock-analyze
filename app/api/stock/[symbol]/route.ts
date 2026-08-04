@@ -17,7 +17,10 @@ export async function GET(
     return NextResponse.json(data);
   } catch (err) {
     if (err instanceof SymbolNotFoundError) {
-      return NextResponse.json({ error: err.message }, { status: 404 });
+      return NextResponse.json(
+        { error: err.message, causes: err.causes },
+        { status: 404 }
+      );
     }
     return NextResponse.json(
       { error: "Unexpected error fetching stock data." },

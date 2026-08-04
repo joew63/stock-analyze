@@ -23,9 +23,17 @@ export default async function StockPage({
       err instanceof SymbolNotFoundError
         ? err.message
         : "Something went wrong fetching this stock. Try again in a moment.";
+    const causes = err instanceof SymbolNotFoundError ? err.causes : [];
     return (
       <main className="mx-auto flex max-w-2xl flex-1 flex-col items-center justify-center gap-4 px-4 py-24 text-center">
         <p className="text-neutral-300">{message}</p>
+        {causes.length > 0 && (
+          <ul className="space-y-1 text-xs text-neutral-500">
+            {causes.map((cause, i) => (
+              <li key={i}>{cause}</li>
+            ))}
+          </ul>
+        )}
         <Link href="/" className="text-sm text-neutral-400 underline hover:text-neutral-200">
           Back to search
         </Link>

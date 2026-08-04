@@ -58,6 +58,66 @@ Open [http://localhost:3000](http://localhost:3000) and search a ticker (e.g. `A
 
 **Gotcha**: Amplify only injects console-configured environment variables at *build* time by default — Next.js code that runs at *request* time (our API route) won't see them unless they're written into `.env.production` during the build. [`amplify.yml`](amplify.yml) already handles this (`env | grep -e FINNHUB_API_KEY -e FMP_API_KEY >> .env.production` before `npm run build`). If you add more env vars later, add them to that same `grep` pattern or they'll silently be `undefined` at runtime. Note this does mean the key values end up in the build artifacts — acceptable here since these are free-tier, read-only data API keys with no billing risk, but don't extend this pattern to real secrets (use [SSR compute IAM roles](https://docs.aws.amazon.com/amplify/latest/userguide/amplify-SSR-compute-role.html) for those instead).
 
+## Daily stock digest email
+
+Optional feature: scans a curated watchlist once a day, flags RSI-oversold
+setups that still clear a fundamentals floor, and emails a thesis + target
+price + stop-loss for each. See `lib/digest/*` and `app/api/digest/route.ts`.
+
+- **Not investment advice** — target/stop are a statistical 30-day ±1σ band
+  from historical volatility (the same math as the projection chart), not a
+  promise.
+- **Watchlist**: `lib/digest/watchlist.ts`, ~30 liquid large-caps. FMP's
+  free tier 402s historical prices for a chunk of large-caps (confirmed at
+  time of writing: AVGO, ORCL, CRM, HD, MCD, LLY, MA, CAT, PG, ABT, TMO,
+  LIN, ACN, TXN, QCOM, LOW, TJX, BKNG, IBM) — those are already excluded
+  from the default list. A gated symbol just gets silently skipped with a
+  clear reason rather than breaking the scan, so it's safe to experiment
+  with the list.
+- **Preview without sending mail**: `GET /api/digest?dryRun=true` (with the
+  `x-digest-secret` header) runs the full scan and returns the rendered
+  email as JSON without calling SES — use this to tune the watchlist or
+  thresholds before trusting it to actually send.
+
+### One-time AWS setup
+
+This app has no persistent server, so the digest needs its own trigger and
+mailer — both AWS, to match the existing Amplify hosting.
+
+1. **Verify a sender identity in SES** (Console → SES → Verified identities
+   → Create identity, or `aws sesv2 create-email-identity --email-identity
+   you@example.com`), then click the verification link SES emails you.
+   - If sender **and** recipient are the same verified address (the common
+     case for a personal digest), SES's sandbox mode is enough — no
+     "production access" review needed.
+2. **Let the app's Lambda send mail**: attach an inline IAM policy granting
+   `ses:SendEmail` and `ses:SendRawEmail` to the Amplify app's [SSR compute
+   role](https://docs.aws.amazon.com/amplify/latest/userguide/amplify-SSR-compute-role.html)
+   (the same role the Gotcha note below points to for real secrets). No AWS
+   access keys go in env vars — the SDK picks up the Lambda's own role.
+3. **Add env vars** in Amplify Console → App settings → Environment
+   variables: `DIGEST_SENDER_EMAIL`, `DIGEST_RECIPIENT_EMAIL`,
+   `DIGEST_AWS_REGION` (the region you verified the SES identity in), and
+   `DIGEST_CRON_SECRET` (any random string, e.g. `openssl rand -hex 32`).
+   Redeploy so `amplify.yml` picks them into `.env.production`.
+4. **Schedule the daily trigger** with EventBridge Scheduler, since it needs
+   to call the app's own HTTPS endpoint with a secret header:
+   - Create an EventBridge **connection** (`API_KEY` auth, key name
+     `x-digest-secret`, value = your `DIGEST_CRON_SECRET`).
+   - Create an EventBridge **API destination** using that connection,
+     pointing at `https://<your-amplify-domain>/api/digest`.
+   - Create a **Scheduler schedule** targeting that API destination, e.g.
+     cron `cron(0 7 ? * MON-FRI *)` with `ScheduleExpressionTimezone:
+     America/New_York` (handles EST/EDT automatically, trading days only).
+   The Console wizard is easier to get right than hand-written CLI here
+   since this is a multi-resource, IAM-heavy setup — see the [EventBridge
+   Scheduler docs](https://docs.aws.amazon.com/scheduler/latest/UserGuide/what-is-scheduler.html)
+   for the exact screens.
+
+Once wired up, hit `GET /api/digest?dryRun=true` yourself first (with the
+secret header) to confirm the scan looks right before trusting the
+schedule to send real mail.
+
 ## Notes / known limitations
 
 - **No database** — every page load re-fetches from the providers (through the in-memory cache). Fine for single-user use; would need a real cache/store (e.g. DynamoDB) if this ever gets multi-user traffic.

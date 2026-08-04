@@ -134,29 +134,53 @@ export async function getFundamentalRatios(
   });
 }
 
+function mapIncomeStatementRow(r: Record<string, unknown>): IncomeStatementPoint {
+  const fiscalYear = pickString(r, ["fiscalYear"]) ?? "";
+  const rawPeriod = pickString(r, ["period"]) ?? "";
+  const periodLabel = rawPeriod === "FY" ? fiscalYear : `${rawPeriod} ${fiscalYear}`.trim();
+  return {
+    date: pickString(r, ["date"]) ?? "",
+    period: periodLabel,
+    revenue: pickNumber(r, ["revenue"]),
+    costOfRevenue: pickNumber(r, ["costOfRevenue"]),
+    grossProfit: pickNumber(r, ["grossProfit"]),
+    researchAndDevelopmentExpenses: pickNumber(r, ["researchAndDevelopmentExpenses"]),
+    sellingGeneralAndAdministrativeExpenses: pickNumber(r, [
+      "sellingGeneralAndAdministrativeExpenses",
+    ]),
+    operatingExpenses: pickNumber(r, ["operatingExpenses"]),
+    operatingIncome: pickNumber(r, ["operatingIncome"]),
+    totalOtherIncomeExpensesNet: pickNumber(r, ["totalOtherIncomeExpensesNet"]),
+    incomeBeforeTax: pickNumber(r, ["incomeBeforeTax"]),
+    incomeTaxExpense: pickNumber(r, ["incomeTaxExpense"]),
+    netIncome: pickNumber(r, ["netIncome"]),
+    ebitda: pickNumber(r, ["ebitda"]),
+    ebit: pickNumber(r, ["ebit"]),
+    eps: pickNumber(r, ["eps"]),
+    epsDiluted: pickNumber(r, ["epsDiluted", "epsdiluted"]),
+    weightedAverageShsOut: pickNumber(r, ["weightedAverageShsOut"]),
+    weightedAverageShsOutDil: pickNumber(r, ["weightedAverageShsOutDil"]),
+  };
+}
+
 export async function getIncomeStatementHistory(
   symbol: string,
-  years = 5
+  period: "annual" | "quarter" = "annual",
+  limit = 5
 ): Promise<IncomeStatementPoint[]> {
-  return cached(`fmp:income:${symbol}`, TTL.FUNDAMENTALS, async () => {
+  return cached(`fmp:income:${symbol}:${period}:${limit}`, TTL.FUNDAMENTALS, async () => {
     const raw = await fmpGet<Record<string, unknown>[]>("/income-statement", {
       symbol,
-      period: "annual",
-      limit: String(years),
+      period,
+      limit: String(limit),
     });
-    return raw.map((r) => ({
-      date: pickString(r, ["date"]) ?? "",
-      period: pickString(r, ["fiscalYear", "period"]) ?? "",
-      revenue: pickNumber(r, ["revenue"]),
-      netIncome: pickNumber(r, ["netIncome"]),
-      eps: pickNumber(r, ["eps", "epsdiluted"]),
-    }));
+    return raw.map(mapIncomeStatementRow);
   });
 }
 
 export async function getHistoricalPrices(
   symbol: string,
-  days = 400
+  days = 1830 // ~5 years
 ): Promise<HistoricalPricePoint[]> {
   return cached(`fmp:history:${symbol}`, TTL.HISTORY, async () => {
     const to = new Date();
@@ -171,10 +195,17 @@ export async function getHistoricalPrices(
     });
     const list = Array.isArray(raw) ? raw : raw.historical ?? [];
     return list
-      .map((p) => ({
-        date: pickString(p, ["date"]) ?? "",
-        close: pickNumber(p, ["close"]) ?? 0,
-      }))
+      .map((p) => {
+        const close = pickNumber(p, ["close"]) ?? 0;
+        return {
+          date: pickString(p, ["date"]) ?? "",
+          open: pickNumber(p, ["open"]) ?? close,
+          high: pickNumber(p, ["high"]) ?? close,
+          low: pickNumber(p, ["low"]) ?? close,
+          close,
+          volume: pickNumber(p, ["volume"]) ?? 0,
+        };
+      })
       .filter((p) => p.date && p.close > 0)
       .sort((a, b) => (a.date < b.date ? -1 : 1));
   });

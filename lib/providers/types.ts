@@ -45,13 +45,31 @@ export interface IncomeStatementPoint {
   date: string;
   period: string;
   revenue: number | null;
+  costOfRevenue: number | null;
+  grossProfit: number | null;
+  researchAndDevelopmentExpenses: number | null;
+  sellingGeneralAndAdministrativeExpenses: number | null;
+  operatingExpenses: number | null;
+  operatingIncome: number | null;
+  totalOtherIncomeExpensesNet: number | null;
+  incomeBeforeTax: number | null;
+  incomeTaxExpense: number | null;
   netIncome: number | null;
+  ebitda: number | null;
+  ebit: number | null;
   eps: number | null;
+  epsDiluted: number | null;
+  weightedAverageShsOut: number | null;
+  weightedAverageShsOutDil: number | null;
 }
 
 export interface HistoricalPricePoint {
   date: string;
+  open: number;
+  high: number;
+  low: number;
   close: number;
+  volume: number;
 }
 
 export interface RecommendationTrendPoint {
@@ -86,6 +104,7 @@ export interface StockDataBundle {
   profile: CompanyProfile | null;
   ratios: FundamentalRatios | null;
   incomeHistory: IncomeStatementPoint[] | null;
+  incomeHistoryQuarterly: IncomeStatementPoint[] | null;
   priceHistory: HistoricalPricePoint[] | null;
   recommendationTrend: RecommendationTrendPoint[] | null;
   news: NewsItem[] | null;

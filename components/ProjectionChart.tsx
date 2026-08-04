@@ -1,5 +1,6 @@
 "use client";
 
+import { useTheme } from "next-themes";
 import {
   Area,
   CartesianGrid,
@@ -12,6 +13,11 @@ import {
 } from "recharts";
 import type { HistoricalPricePoint } from "@/lib/providers/types";
 import type { PriceProjection } from "@/lib/projections/trend";
+
+const CHART_COLORS = {
+  light: { grid: "#e5e5e5", axis: "#525252", actual: "#171717", tooltipBg: "#ffffff", tooltipBorder: "#d4d4d4", tooltipText: "#171717" },
+  dark: { grid: "#262626", axis: "#a3a3a3", actual: "#e5e5e5", tooltipBg: "#171717", tooltipBorder: "#404040", tooltipText: "#e5e5e5" },
+};
 
 interface ChartPoint {
   date: string;
@@ -27,9 +33,12 @@ export function ProjectionChart({
   priceHistory: HistoricalPricePoint[] | null;
   projection: PriceProjection;
 }) {
+  const { resolvedTheme } = useTheme();
+  const colors = resolvedTheme === "dark" ? CHART_COLORS.dark : CHART_COLORS.light;
+
   if (!priceHistory || priceHistory.length === 0 || projection.insufficientData) {
     return (
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-6 text-sm text-neutral-500">
+      <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-6 text-sm text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900/60">
         Not enough price history to build a projection.
       </div>
     );
@@ -57,9 +66,9 @@ export function ProjectionChart({
   }
 
   return (
-    <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-4">
+    <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900/60">
       <div className="mb-1 flex items-center justify-between">
-        <h3 className="text-sm font-medium text-neutral-300">
+        <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
           Model-based price projection
         </h3>
         <span className="text-xs text-neutral-500">
@@ -73,12 +82,16 @@ export function ProjectionChart({
       </p>
       <ResponsiveContainer width="100%" height={320}>
         <ComposedChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-          <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#a3a3a3" }} minTickGap={40} />
-          <YAxis domain={["auto", "auto"]} tick={{ fontSize: 11, fill: "#a3a3a3" }} width={60} />
+          <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
+          <XAxis dataKey="date" tick={{ fontSize: 11, fill: colors.axis }} minTickGap={40} />
+          <YAxis domain={["auto", "auto"]} tick={{ fontSize: 11, fill: colors.axis }} width={60} />
           <Tooltip
-            contentStyle={{ background: "#171717", border: "1px solid #404040", fontSize: 12 }}
-            labelStyle={{ color: "#e5e5e5" }}
+            contentStyle={{
+              background: colors.tooltipBg,
+              border: `1px solid ${colors.tooltipBorder}`,
+              fontSize: 12,
+            }}
+            labelStyle={{ color: colors.tooltipText }}
           />
           <Area
             type="monotone"
@@ -91,7 +104,7 @@ export function ProjectionChart({
           <Line
             type="monotone"
             dataKey="actual"
-            stroke="#e5e5e5"
+            stroke={colors.actual}
             dot={false}
             strokeWidth={2}
           />

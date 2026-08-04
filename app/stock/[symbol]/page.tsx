@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { getStockData, SymbolNotFoundError } from "@/lib/stockData";
 import { StockSearch } from "@/components/StockSearch";
+import { StockChart } from "@/components/StockChart";
 import { MetricsGrid } from "@/components/MetricsGrid";
 import { GradeCard } from "@/components/GradeCard";
 import { ProjectionChart } from "@/components/ProjectionChart";
 import { RecommendationTrend } from "@/components/RecommendationTrend";
+import { FinancialsTable } from "@/components/FinancialsTable";
 import { NewsFeed } from "@/components/NewsFeed";
 
 export default async function StockPage({
@@ -26,7 +28,7 @@ export default async function StockPage({
     const causes = err instanceof SymbolNotFoundError ? err.causes : [];
     return (
       <main className="mx-auto flex max-w-2xl flex-1 flex-col items-center justify-center gap-4 px-4 py-24 text-center">
-        <p className="text-neutral-300">{message}</p>
+        <p className="text-neutral-700 dark:text-neutral-300">{message}</p>
         {causes.length > 0 && (
           <ul className="space-y-1 text-xs text-neutral-500">
             {causes.map((cause, i) => (
@@ -34,7 +36,10 @@ export default async function StockPage({
             ))}
           </ul>
         )}
-        <Link href="/" className="text-sm text-neutral-400 underline hover:text-neutral-200">
+        <Link
+          href="/"
+          className="text-sm text-neutral-500 underline hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200"
+        >
           Back to search
         </Link>
       </main>
@@ -48,13 +53,21 @@ export default async function StockPage({
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-10">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-neutral-100">
+          <h1 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
             {profile?.name ?? symbol} <span className="text-neutral-500">({symbol})</span>
           </h1>
           {quote && (
             <p className="mt-1 text-lg">
-              <span className="font-medium text-neutral-100">${quote.price.toFixed(2)}</span>{" "}
-              <span className={quote.change >= 0 ? "text-emerald-400" : "text-red-400"}>
+              <span className="font-medium text-neutral-900 dark:text-neutral-100">
+                ${quote.price.toFixed(2)}
+              </span>{" "}
+              <span
+                className={
+                  quote.change >= 0
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-red-600 dark:text-red-400"
+                }
+              >
                 {quote.change >= 0 ? "+" : ""}
                 {quote.change.toFixed(2)} ({quote.changePercent.toFixed(2)}%)
               </span>
@@ -67,11 +80,15 @@ export default async function StockPage({
       </div>
 
       {bundle.errors.length > 0 && (
-        <div className="rounded-lg border border-yellow-700/40 bg-yellow-500/5 p-3 text-xs text-yellow-500">
+        <div className="rounded-lg border border-yellow-600/40 bg-yellow-500/10 p-3 text-xs text-yellow-700 dark:text-yellow-500">
           Some data sources were unavailable, so parts of this page may be incomplete:{" "}
           {bundle.errors.join("; ")}
         </div>
       )}
+
+      <section>
+        <StockChart priceHistory={bundle.priceHistory} />
+      </section>
 
       <section>
         <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-neutral-500">
@@ -101,6 +118,16 @@ export default async function StockPage({
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ProjectionChart priceHistory={bundle.priceHistory} projection={projection} />
         <RecommendationTrend trend={bundle.recommendationTrend} />
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-neutral-500">
+          Financials
+        </h2>
+        <FinancialsTable
+          annual={bundle.incomeHistory}
+          quarterly={bundle.incomeHistoryQuarterly}
+        />
       </section>
 
       <section>

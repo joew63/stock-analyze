@@ -81,10 +81,12 @@ export function MetricsGrid({
       {items.map((item) => (
         <div
           key={item.label}
-          className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-4"
+          className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900/60"
         >
           <div className="text-xs text-neutral-500">{item.label}</div>
-          <div className="mt-1 text-lg font-medium text-neutral-100">{item.value}</div>
+          <div className="mt-1 text-lg font-medium text-neutral-900 dark:text-neutral-100">
+            {item.value}
+          </div>
         </div>
       ))}
     </div>

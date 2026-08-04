@@ -1,9 +1,10 @@
 # Stock Analyzer
 
-A personal research tool: search a ticker and get a breakdown — key metrics,
-five brutally honest letter grades (Valuation, Growth, Profitability,
-Momentum, EPS & Revenue), a statistical price projection, analyst
-recommendation trend, and recent news.
+A personal research tool: search a ticker and get a breakdown — a
+multi-timeframe price chart, key metrics, five brutally honest letter grades
+(Valuation, Growth, Profitability, Momentum, EPS & Revenue), a statistical
+price projection, analyst recommendation trend, a financial statements
+table, and recent news. Light mode by default, with a dark mode toggle.
 
 ## How it's built
 
@@ -62,3 +63,5 @@ Open [http://localhost:3000](http://localhost:3000) and search a ticker (e.g. `A
 - **No database** — every page load re-fetches from the providers (through the in-memory cache). Fine for single-user use; would need a real cache/store (e.g. DynamoDB) if this ever gets multi-user traffic.
 - **FMP field names**: FMP has renamed fields across API versions in the past. `lib/providers/fmp.ts` tries a few known aliases per metric (`pickNumber`/`pickString` helpers) so a minor rename doesn't silently break everything — but if a metric shows up as "N/A" for every stock, check the raw FMP response for that endpoint and add the correct field name to the alias list.
 - **Grades show their receipts** — every grade card expands to show the exact sub-metrics and values that produced it. If a metric is unavailable, it's excluded from the average rather than faked.
+- **No hourly/intraday chart** — FMP's free tier paywalls intraday endpoints (`/historical-chart/1hour` etc). The price chart uses daily EOD data only, with 1M/3M/YTD/1Y/5Y range buttons.
+- **FMP `limit` cap** — the free tier caps `limit` at 5 for `/income-statement` (both annual and quarterly). `lib/stockData.ts` requests exactly 5 for each; requesting more returns a 402, not partial data.

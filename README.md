@@ -55,6 +55,8 @@ Open [http://localhost:3000](http://localhost:3000) and search a ticker (e.g. `A
 4. Deploy. Amplify builds and serves the Next.js SSR app on Lambda under the hood — no server to manage, and well within a small free-tier/low-traffic budget.
 5. After deploy, open the Amplify-provided URL and repeat the ticker search smoke test to confirm the env vars are being read correctly in production (not just from local `.env.local`).
 
+**Gotcha**: Amplify only injects console-configured environment variables at *build* time by default — Next.js code that runs at *request* time (our API route) won't see them unless they're written into `.env.production` during the build. [`amplify.yml`](amplify.yml) already handles this (`env | grep -e FINNHUB_API_KEY -e FMP_API_KEY >> .env.production` before `npm run build`). If you add more env vars later, add them to that same `grep` pattern or they'll silently be `undefined` at runtime. Note this does mean the key values end up in the build artifacts — acceptable here since these are free-tier, read-only data API keys with no billing risk, but don't extend this pattern to real secrets (use [SSR compute IAM roles](https://docs.aws.amazon.com/amplify/latest/userguide/amplify-SSR-compute-role.html) for those instead).
+
 ## Notes / known limitations
 
 - **No database** — every page load re-fetches from the providers (through the in-memory cache). Fine for single-user use; would need a real cache/store (e.g. DynamoDB) if this ever gets multi-user traffic.

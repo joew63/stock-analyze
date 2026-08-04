@@ -8,6 +8,7 @@ import { ProjectionChart } from "@/components/ProjectionChart";
 import { RecommendationTrend } from "@/components/RecommendationTrend";
 import { FinancialsTable } from "@/components/FinancialsTable";
 import { NewsFeed } from "@/components/NewsFeed";
+import { BacktestPanel } from "@/components/BacktestPanel";
 
 export default async function StockPage({
   params,
@@ -118,6 +119,10 @@ export default async function StockPage({
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ProjectionChart priceHistory={bundle.priceHistory} projection={projection} />
         <RecommendationTrend trend={bundle.recommendationTrend} />
+      </section>
+
+      <section>
+        <BacktestPanel priceHistory={bundle.priceHistory} />
       </section>
 
       <section>

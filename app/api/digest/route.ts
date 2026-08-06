@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
       sent: true,
       scannedAt: result.scannedAt,
       watchlistSize: result.watchlistSize,
-      candidateCount: result.candidates.length,
+      standoutCount: result.standouts.length,
     });
   } catch (err) {
     return NextResponse.json(

@@ -5,12 +5,13 @@ import { fiftyTwoWeekRange } from "@/lib/priceStats";
 import { fetchSignalData } from "./fetchSignalData";
 import { buildThesis } from "./thesis";
 import { DEFAULT_WATCHLIST } from "./watchlist";
-import type { DigestCandidate, DigestResult, DigestSkip } from "./types";
+import { fetchMarketBriefing, computeMarketSentiment } from "./market";
+import type { DigestRow, DigestResult, DigestSkip } from "./types";
 
 const RSI_PERIOD = 14;
-const RSI_BUY_THRESHOLD = 45;
-const FUNDAMENTAL_FLOOR = 45;
-const MAX_CANDIDATES = 5;
+const RSI_OVERSOLD_THRESHOLD = 45;
+const RSI_OVERBOUGHT_THRESHOLD = 70;
+const MAX_STANDOUTS = 5;
 const CONCURRENCY = 5;
 const PROJECTION_HORIZON_DAYS = 30;
 
@@ -36,14 +37,15 @@ function clamp(n: number, min: number, max: number): number {
 }
 
 interface ScanOutcome {
-  candidate: DigestCandidate | null;
+  row: DigestRow | null;
   skip: DigestSkip | null;
 }
 
-// Qualifies + scores + composes one candidate. Oversold alone isn't enough
-// to qualify — a fundamental floor (profitability + growth) filters out
-// "cheap for a reason" names. Target/stop reuse the existing statistical
-// projection (lib/projections/trend.ts) rather than an invented flat %.
+// Builds one row for (almost) every watchlist symbol — scoring and ranking
+// happen after the fact (see runDailyScan), not as a qualification gate.
+// A symbol only ends up in `skipped` when we genuinely can't compute
+// numbers for it (missing price history, RSI, or fundamentals), not
+// because it looked unattractive.
 async function scanSymbol(symbol: string): Promise<ScanOutcome> {
   const { bundle, errors } = await fetchSignalData(symbol);
   const { quote, priceHistory, profile } = bundle;
@@ -53,7 +55,7 @@ async function scanSymbol(symbol: string): Promise<ScanOutcome> {
     const reason = priceHistoryError
       ? `Price data unavailable (${priceHistoryError.replace("priceHistory: ", "")}).`
       : "Not enough price history.";
-    return { candidate: null, skip: { symbol, reason } };
+    return { row: null, skip: { symbol, reason } };
   }
 
   const sorted = [...priceHistory].sort((a, b) => (a.date < b.date ? -1 : 1));
@@ -61,35 +63,24 @@ async function scanSymbol(symbol: string): Promise<ScanOutcome> {
   const rsiSeries = computeRSI(closes, RSI_PERIOD);
   const rsi = rsiSeries[rsiSeries.length - 1];
   const price = quote?.price ?? closes[closes.length - 1];
+  const changePercent = quote?.changePercent ?? 0;
 
   if (rsi === null) {
-    return { candidate: null, skip: { symbol, reason: "RSI unavailable." } };
-  }
-  if (rsi > RSI_BUY_THRESHOLD) {
-    return { candidate: null, skip: { symbol, reason: `RSI ${rsi.toFixed(0)} not oversold.` } };
+    return { row: null, skip: { symbol, reason: "RSI unavailable." } };
   }
 
   const grades: StockGrades = gradeStock(bundle);
   const floorGrades = [grades.profitability, grades.growth].filter((g) => !g.insufficientData);
   if (floorGrades.length === 0) {
-    return { candidate: null, skip: { symbol, reason: "Not enough fundamentals data." } };
+    return { row: null, skip: { symbol, reason: "Not enough fundamentals data." } };
   }
   const fundamentalFloor = floorGrades.reduce((s, g) => s + g.score, 0) / floorGrades.length;
-  if (fundamentalFloor < FUNDAMENTAL_FLOOR) {
-    return {
-      candidate: null,
-      skip: {
-        symbol,
-        reason: `Oversold but fundamentals too weak (${fundamentalFloor.toFixed(0)}/100).`,
-      },
-    };
-  }
 
   const projection = computeProjection(priceHistory);
   const horizon = projection.points.find((p) => p.daysAhead === PROJECTION_HORIZON_DAYS);
   if (projection.insufficientData || !horizon) {
     return {
-      candidate: null,
+      row: null,
       skip: { symbol, reason: "Not enough history for a price projection." },
     };
   }
@@ -105,11 +96,14 @@ async function scanSymbol(symbol: string): Promise<ScanOutcome> {
 
   const thesis = buildThesis({ symbol, price, rsi, rsiPeriod: RSI_PERIOD, range, grades });
 
-  const candidate: DigestCandidate = {
+  const row: DigestRow = {
     symbol,
     name: profile?.name ?? symbol,
     price,
+    changePercent,
     rsi,
+    oversold: rsi <= RSI_OVERSOLD_THRESHOLD,
+    overbought: rsi >= RSI_OVERBOUGHT_THRESHOLD,
     score,
     grades: {
       valuation: grades.valuation.score,
@@ -124,26 +118,34 @@ async function scanSymbol(symbol: string): Promise<ScanOutcome> {
     horizonDays: PROJECTION_HORIZON_DAYS,
   };
 
-  return { candidate, skip: null };
+  return { row, skip: null };
 }
 
 export async function runDailyScan(
   watchlist: string[] = DEFAULT_WATCHLIST
 ): Promise<DigestResult> {
-  const outcomes = await mapWithConcurrency(watchlist, CONCURRENCY, scanSymbol);
+  const [outcomes, marketBriefing] = await Promise.all([
+    mapWithConcurrency(watchlist, CONCURRENCY, scanSymbol),
+    fetchMarketBriefing(),
+  ]);
 
-  const candidates = outcomes
-    .map((o) => o.candidate)
-    .filter((c): c is DigestCandidate => c !== null)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, MAX_CANDIDATES);
+  const rows = outcomes
+    .map((o) => o.row)
+    .filter((r): r is DigestRow => r !== null)
+    .sort((a, b) => b.score - a.score);
 
   const skipped = outcomes.map((o) => o.skip).filter((s): s is DigestSkip => s !== null);
+
+  const standouts = rows.slice(0, MAX_STANDOUTS);
+  const marketSentiment = computeMarketSentiment(rows, marketBriefing.benchmarks);
 
   return {
     scannedAt: new Date().toISOString(),
     watchlistSize: watchlist.length,
-    candidates,
+    marketBriefing,
+    marketSentiment,
+    standouts,
+    rows,
     skipped,
   };
 }

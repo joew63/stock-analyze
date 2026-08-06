@@ -60,9 +60,23 @@ Open [http://localhost:3000](http://localhost:3000) and search a ticker (e.g. `A
 
 ## Daily stock digest email
 
-Optional feature: scans a curated watchlist once a day, flags RSI-oversold
-setups that still clear a fundamentals floor, and emails a thesis + target
-price + stop-loss for each. See `lib/digest/*` and `app/api/digest/route.ts`.
+Optional feature: scans a curated watchlist once a day and always sends —
+there's no "clear the bar" gate anymore. The email has four parts:
+
+1. **Market briefing** — SPY/QQQ/DIA/IWM price + % change, with a one-line
+   summary of which benchmark led/lagged.
+2. **Market sentiment** — a deterministic Bullish/Neutral/Bearish gauge
+   computed from watchlist breadth (% of symbols up today), average RSI,
+   and benchmark performance. Not a third-party fear/greed index — see
+   `computeMarketSentiment` in `lib/digest/market.ts` for the exact weights.
+3. **Standouts** — the top 3-5 symbols by score (oversold + proximity to
+   52-week low + fundamentals), each with a thesis, 30-day target/stop-loss,
+   and grade breakdown.
+4. **Full watchlist** — every scanned symbol as a compact row (price,
+   change%, RSI, score, oversold/overbought flag), so nothing is hidden
+   just because it didn't stand out.
+
+See `lib/digest/*` and `app/api/digest/route.ts`.
 
 - **Not investment advice** — target/stop are a statistical 30-day ±1σ band
   from historical volatility (the same math as the projection chart), not a
@@ -72,8 +86,8 @@ price + stop-loss for each. See `lib/digest/*` and `app/api/digest/route.ts`.
   time of writing: AVGO, ORCL, CRM, HD, MCD, LLY, MA, CAT, PG, ABT, TMO,
   LIN, ACN, TXN, QCOM, LOW, TJX, BKNG, IBM) — those are already excluded
   from the default list. A gated symbol just gets silently skipped with a
-  clear reason rather than breaking the scan, so it's safe to experiment
-  with the list.
+  clear reason (data unavailable, not a "didn't qualify" judgment) rather
+  than breaking the scan, so it's safe to experiment with the list.
 - **Preview without sending mail**: `GET /api/digest?dryRun=true` (with the
   `x-digest-secret` header) runs the full scan and returns the rendered
   email as JSON without calling SES — use this to tune the watchlist or

@@ -7,6 +7,40 @@ function topMetricFor(grade: GradeResult): string | null {
   return `${best.label.toLowerCase()} ${best.displayValue}`;
 }
 
+// RSI band -> plain-English momentum description + closing framing. Every
+// scanned symbol gets a thesis now (not just oversold ones), so the wording
+// has to track the actual RSI value instead of assuming "oversold".
+function rsiDescription(rsi: number): { phrase: string; framing: string } {
+  if (rsi <= 30) {
+    return {
+      phrase: `RSI(14) at ${rsi.toFixed(0)}, deeply oversold`,
+      framing: "a buy-the-dip setup on fundamentals that haven't broken",
+    };
+  }
+  if (rsi <= 45) {
+    return {
+      phrase: `RSI(14) at ${rsi.toFixed(0)}, oversold`,
+      framing: "a mild pullback worth watching if fundamentals hold up",
+    };
+  }
+  if (rsi < 55) {
+    return {
+      phrase: `RSI(14) at ${rsi.toFixed(0)}, neutral momentum`,
+      framing: "no strong technical signal either way right now",
+    };
+  }
+  if (rsi < 70) {
+    return {
+      phrase: `RSI(14) at ${rsi.toFixed(0)}, firm momentum`,
+      framing: "trending well but not yet stretched",
+    };
+  }
+  return {
+    phrase: `RSI(14) at ${rsi.toFixed(0)}, overbought`,
+    framing: "extended enough that chasing here carries more risk",
+  };
+}
+
 // Composes a plain-English thesis purely from numbers already computed
 // elsewhere in the app (grade sub-metrics, RSI, 52-week range) — no LLM
 // call, no new modeling.
@@ -18,7 +52,7 @@ export function buildThesis(params: {
   range: { low: number; high: number } | null;
   grades: StockGrades;
 }): string {
-  const { symbol, price, rsi, rsiPeriod, range, grades } = params;
+  const { symbol, price, rsi, range, grades } = params;
   const parts: string[] = [];
 
   if (range && range.high > 0) {
@@ -30,7 +64,8 @@ export function buildThesis(params: {
     parts.push(`${symbol} is trading at $${price.toFixed(2)}`);
   }
 
-  parts.push(`with RSI(${rsiPeriod}) at ${rsi.toFixed(0)}, signaling oversold conditions`);
+  const { phrase, framing } = rsiDescription(rsi);
+  parts.push(`with ${phrase}`);
 
   const categories: { label: string; grade: GradeResult }[] = [
     { label: "Profitability", grade: grades.profitability },
@@ -55,5 +90,5 @@ export function buildThesis(params: {
     parts.push(`while ${weakest.label.toLowerCase()} lags (${weakest.grade.score.toFixed(0)}/100)`);
   }
 
-  return `${parts.join(", ")} — a buy-the-dip setup on fundamentals that haven't broken.`;
+  return `${parts.join(", ")} — ${framing}.`;
 }

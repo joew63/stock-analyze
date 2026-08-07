@@ -246,7 +246,7 @@ function renderText(result: DigestResult, date: string): string {
   }
 
   lines.push(
-    "Target/stop are a statistical 30-day +/-1 std-dev band from historical volatility, not a guarantee. Market sentiment is a deterministic breadth/RSI/benchmark gauge, not a third-party index. Not investment advice."
+    "Target/stop are a statistical 30-day +/-1 std-dev band from historical volatility, not a guarantee. Market sentiment is a deterministic breadth/RSI/benchmark gauge, not a third-party index. NFA."
   );
 
   return lines.join("\n");

@@ -93,28 +93,41 @@ See `lib/digest/*` and `app/api/digest/route.ts`.
   email as JSON without calling SES — use this to tune the watchlist or
   thresholds before trusting it to actually send.
 
-### One-time AWS setup
+### One-time AWS + Gmail setup
 
-This app has no persistent server, so the digest needs its own trigger and
-mailer — both AWS, to match the existing Amplify hosting.
+This app has no persistent server, so the digest needs its own trigger, and
+mail is sent through the Gmail account it's going to anyway rather than a
+third-party mailer — sending as yourself through Gmail's own SMTP servers
+means SPF/DKIM/DMARC are naturally aligned to gmail.com (no domain to buy
+or verify, and nothing for Gmail's spam filter to flag as spoofed). This
+used to go through SES; see git history if you need to resurrect that path
+(e.g. for a sender address that isn't a personal Gmail account).
 
-1. **Verify a sender identity in SES** (Console → SES → Verified identities
-   → Create identity, or `aws sesv2 create-email-identity --email-identity
-   you@example.com`), then click the verification link SES emails you.
-   - If sender **and** recipient are the same verified address (the common
-     case for a personal digest), SES's sandbox mode is enough — no
-     "production access" review needed.
-2. **Let the app's Lambda send mail**: attach an inline IAM policy granting
-   `ses:SendEmail` and `ses:SendRawEmail` to the Amplify app's [SSR compute
+1. **Enable 2-Step Verification** on the Google account you're sending
+   from, if it isn't already (Google Account → Security).
+2. **Create an App Password**: Google Account → Security → App passwords →
+   generate one for "Mail". You get a 16-character code — a scoped,
+   revocable credential, not your real account password.
+3. **Store the App Password in SSM Parameter Store** (not env vars — it's a
+   real secret, unlike the free-tier API keys the Gotcha note below talks
+   about, so it shouldn't end up baked into build artifacts):
+   `aws ssm put-parameter --name /digest/gmail-app-password --type
+   SecureString --value "xxxx xxxx xxxx xxxx"`.
+4. **Let the app's Lambda read it**: attach an inline IAM policy granting
+   `ssm:GetParameter` (with decryption) on that parameter's ARN to the
+   Amplify app's [SSR compute
    role](https://docs.aws.amazon.com/amplify/latest/userguide/amplify-SSR-compute-role.html)
    (the same role the Gotcha note below points to for real secrets). No AWS
    access keys go in env vars — the SDK picks up the Lambda's own role.
-3. **Add env vars** in Amplify Console → App settings → Environment
-   variables: `DIGEST_SENDER_EMAIL`, `DIGEST_RECIPIENT_EMAIL`,
-   `DIGEST_AWS_REGION` (the region you verified the SES identity in), and
-   `DIGEST_CRON_SECRET` (any random string, e.g. `openssl rand -hex 32`).
-   Redeploy so `amplify.yml` picks them into `.env.production`.
-4. **Schedule the daily trigger** with EventBridge Scheduler, since it needs
+5. **Add env vars** in Amplify Console → App settings → Environment
+   variables: `DIGEST_GMAIL_USER` (the Gmail address sending the mail),
+   `DIGEST_GMAIL_APP_PASSWORD_PARAM` (the SSM parameter *name* from step 3,
+   e.g. `/digest/gmail-app-password` — not the secret itself, so this one's
+   fine at build time), `DIGEST_RECIPIENT_EMAIL`, `DIGEST_AWS_REGION` (the
+   region you created the SSM parameter in), and `DIGEST_CRON_SECRET` (any
+   random string, e.g. `openssl rand -hex 32`). Redeploy so `amplify.yml`
+   picks them into `.env.production`.
+6. **Schedule the daily trigger** with EventBridge Scheduler, since it needs
    to call the app's own HTTPS endpoint with a secret header:
    - Create an EventBridge **connection** (`API_KEY` auth, key name
      `x-digest-secret`, value = your `DIGEST_CRON_SECRET`).

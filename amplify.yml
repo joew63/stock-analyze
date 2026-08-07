@@ -6,7 +6,7 @@ frontend:
         - npm ci
     build:
       commands:
-        - env | grep -e FINNHUB_API_KEY -e FMP_API_KEY -e DIGEST_SENDER_EMAIL -e DIGEST_RECIPIENT_EMAIL -e DIGEST_AWS_REGION -e DIGEST_CRON_SECRET >> .env.production
+        - env | grep -e FINNHUB_API_KEY -e FMP_API_KEY -e DIGEST_GMAIL_USER -e DIGEST_GMAIL_APP_PASSWORD_PARAM -e DIGEST_RECIPIENT_EMAIL -e DIGEST_AWS_REGION -e DIGEST_CRON_SECRET >> .env.production
         - npm run build
   artifacts:
     baseDirectory: .next

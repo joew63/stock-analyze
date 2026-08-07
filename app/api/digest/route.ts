@@ -2,7 +2,7 @@ import { timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { runDailyScan } from "@/lib/digest/scan";
 import { renderDigestEmail } from "@/lib/email/digestEmail";
-import { sendDigestEmail } from "@/lib/email/ses";
+import { sendDigestEmail } from "@/lib/email/gmail";
 
 function isAuthorized(req: NextRequest): boolean {
   const expected = process.env.DIGEST_CRON_SECRET;

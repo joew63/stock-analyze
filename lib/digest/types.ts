@@ -7,6 +7,7 @@ export interface DigestRow {
   oversold: boolean;
   overbought: boolean;
   score: number;
+  allFactorsStrong: boolean;
   grades: {
     valuation: number;
     growth: number;

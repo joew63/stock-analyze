@@ -50,8 +50,10 @@ export function renderDigestEmail(result: DigestResult): RenderedDigestEmail {
 }
 
 function renderHtml(result: DigestResult, date: string): string {
-  const cardStyle =
-    "border:1px solid #e5e5e5;border-radius:12px;padding:16px;margin-bottom:12px;";
+  const cardStyle = (highlighted: boolean) =>
+    `border:1px solid ${
+      highlighted ? "#d97706" : "#e5e5e5"
+    };border-radius:12px;padding:16px;margin-bottom:12px;${highlighted ? "background:#fffbeb;" : ""}`;
   const sectionTitleStyle = "font-size:14px;font-weight:600;color:#171717;margin:24px 0 8px 0;";
   const labelStyle = "color:#737373;font-size:12px;";
   const gradeRow = (grades: DigestRow["grades"]) =>
@@ -90,9 +92,14 @@ function renderHtml(result: DigestResult, date: string): string {
   const standoutCards = result.standouts
     .map(
       (c) => `
-      <div style="${cardStyle}">
+      <div style="${cardStyle(c.allFactorsStrong)}">
         <div style="font-size:16px;font-weight:600;color:#171717;">
           ${c.symbol} <span style="font-weight:400;color:#525252;">— ${c.name}</span>
+          ${
+            c.allFactorsStrong
+              ? `<span style="margin-left:8px;background:#d97706;color:#ffffff;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:600;vertical-align:middle;">★ Strong signal</span>`
+              : ""
+          }
         </div>
         <div style="margin:4px 0 10px 0;font-size:14px;color:#171717;">
           ${fmtCurrency(c.price)} &nbsp;·&nbsp;
@@ -118,7 +125,7 @@ function renderHtml(result: DigestResult, date: string): string {
   ${
     result.standouts.length > 0
       ? standoutCards
-      : `<div style="${cardStyle}color:#525252;font-size:14px;">No standouts today.</div>`
+      : `<div style="${cardStyle(false)}color:#525252;font-size:14px;">No standouts today.</div>`
   }`;
 
   const standoutSymbols = new Set(result.standouts.map((r) => r.symbol));
@@ -171,9 +178,10 @@ function renderHtml(result: DigestResult, date: string): string {
   <h1 style="font-size:18px;margin:0 0 4px 0;">Daily stock digest — ${date}</h1>
   <p style="font-size:12px;color:#737373;margin:0 0 12px 0;">
     Scanned ${result.watchlistSize} watchlist symbols. Standouts are ranked by an oversold +
-    proximity-to-low + fundamentals score; target/stop are a statistical 30-day ±1σ band from
-    historical volatility. Market sentiment is a deterministic breadth/RSI/benchmark gauge, not a
-    third-party index.
+    proximity-to-low + fundamentals score; a ★ Strong signal badge means a symbol scores well on
+    all three factors individually, not just on the blended score. Target/stop are a statistical
+    30-day ±1σ band from historical volatility. Market sentiment is a deterministic
+    breadth/RSI/benchmark gauge, not a third-party index.
   </p>
   ${marketSection}
   ${standoutSection}
@@ -201,7 +209,7 @@ function renderText(result: DigestResult, date: string): string {
     lines.push("  None today.");
   } else {
     for (const c of result.standouts) {
-      lines.push(`${c.symbol} — ${c.name}`);
+      lines.push(`${c.symbol} — ${c.name}${c.allFactorsStrong ? " [★ STRONG SIGNAL]" : ""}`);
       lines.push(
         `  ${fmtCurrency(c.price)} (${fmtPct(c.changePercent)}) · RSI(14) ${c.rsi.toFixed(
           0

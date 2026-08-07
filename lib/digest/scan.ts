@@ -11,7 +11,8 @@ import type { DigestRow, DigestResult, DigestSkip } from "./types";
 const RSI_PERIOD = 14;
 const RSI_OVERSOLD_THRESHOLD = 45;
 const RSI_OVERBOUGHT_THRESHOLD = 70;
-const MAX_STANDOUTS = 5;
+const MAX_STANDOUTS = 7;
+const FACTOR_STRONG_THRESHOLD = 60;
 const CONCURRENCY = 5;
 const PROJECTION_HORIZON_DAYS = 30;
 
@@ -93,6 +94,10 @@ async function scanSymbol(symbol: string): Promise<ScanOutcome> {
     proximityToLow = (1 - position) * 100;
   }
   const score = 0.4 * oversoldScore + 0.3 * proximityToLow + 0.3 * fundamentalFloor;
+  const allFactorsStrong =
+    oversoldScore >= FACTOR_STRONG_THRESHOLD &&
+    proximityToLow >= FACTOR_STRONG_THRESHOLD &&
+    fundamentalFloor >= FACTOR_STRONG_THRESHOLD;
 
   const thesis = buildThesis({ symbol, price, rsi, rsiPeriod: RSI_PERIOD, range, grades });
 
@@ -105,6 +110,7 @@ async function scanSymbol(symbol: string): Promise<ScanOutcome> {
     oversold: rsi <= RSI_OVERSOLD_THRESHOLD,
     overbought: rsi >= RSI_OVERBOUGHT_THRESHOLD,
     score,
+    allFactorsStrong,
     grades: {
       valuation: grades.valuation.score,
       growth: grades.growth.score,

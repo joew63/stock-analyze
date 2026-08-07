@@ -110,6 +110,16 @@ function renderHtml(result: DigestResult, date: string): string {
         <div style="font-size:13px;color:#404040;line-height:1.5;margin-bottom:10px;">
           ${c.thesis}
         </div>
+        ${
+          c.businessSummary
+            ? `<div style="font-size:13px;color:#404040;line-height:1.5;margin-bottom:8px;">
+                 <b style="color:#171717;">What they do:</b> ${c.businessSummary}
+               </div>`
+            : ""
+        }
+        <div style="font-size:13px;color:#7c2d12;line-height:1.5;margin-bottom:10px;">
+          <b>Worth watching:</b> ${c.caution}
+        </div>
         <div style="font-size:13px;color:#171717;margin-bottom:6px;">
           Target (${c.horizonDays}d): <b style="color:#059669;">${fmtCurrency(
             c.targetPrice
@@ -179,9 +189,11 @@ function renderHtml(result: DigestResult, date: string): string {
   <p style="font-size:12px;color:#737373;margin:0 0 12px 0;">
     Scanned ${result.watchlistSize} watchlist symbols. Standouts are ranked by an oversold +
     proximity-to-low + fundamentals score; a ★ Strong signal badge means a symbol scores well on
-    all three factors individually, not just on the blended score. Target/stop are a statistical
-    30-day ±1σ band from historical volatility. Market sentiment is a deterministic
-    breadth/RSI/benchmark gauge, not a third-party index.
+    all three factors individually, not just on the blended score. "What they do" and "Worth
+    watching" are composed from the company profile and grade sub-metrics already in the scan —
+    not third-party commentary. Target/stop are a statistical 30-day ±1σ band from historical
+    volatility. Market sentiment is a deterministic breadth/RSI/benchmark gauge, not a third-party
+    index.
   </p>
   ${marketSection}
   ${standoutSection}
@@ -216,6 +228,10 @@ function renderText(result: DigestResult, date: string): string {
         )} · score ${c.score.toFixed(0)}/100${flagFor(c) ? ` · ${flagFor(c)}` : ""}`
       );
       lines.push(`  ${c.thesis}`);
+      if (c.businessSummary) {
+        lines.push(`  What they do: ${c.businessSummary}`);
+      }
+      lines.push(`  Worth watching: ${c.caution}`);
       lines.push(
         `  Target (${c.horizonDays}d): ${fmtCurrency(c.targetPrice)} · Stop-loss: ${fmtCurrency(
           c.stopLoss

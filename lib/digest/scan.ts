@@ -3,7 +3,7 @@ import { computeRSI } from "@/lib/backtest/indicators";
 import { computeProjection } from "@/lib/projections/trend";
 import { fiftyTwoWeekRange } from "@/lib/priceStats";
 import { fetchSignalData } from "./fetchSignalData";
-import { buildThesis } from "./thesis";
+import { buildThesis, buildCaution, summarizeBusiness } from "./thesis";
 import { DEFAULT_WATCHLIST } from "./watchlist";
 import { fetchMarketBriefing, computeMarketSentiment } from "./market";
 import type { DigestRow, DigestResult, DigestSkip } from "./types";
@@ -100,6 +100,8 @@ async function scanSymbol(symbol: string): Promise<ScanOutcome> {
     fundamentalFloor >= FACTOR_STRONG_THRESHOLD;
 
   const thesis = buildThesis({ symbol, price, rsi, rsiPeriod: RSI_PERIOD, range, grades });
+  const businessSummary = summarizeBusiness(profile?.description ?? null);
+  const caution = buildCaution(grades);
 
   const row: DigestRow = {
     symbol,
@@ -119,6 +121,8 @@ async function scanSymbol(symbol: string): Promise<ScanOutcome> {
       epsRevenue: grades.epsRevenue.score,
     },
     thesis,
+    businessSummary,
+    caution,
     targetPrice: horizon.upper1sd,
     stopLoss: horizon.lower1sd,
     horizonDays: PROJECTION_HORIZON_DAYS,

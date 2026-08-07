@@ -16,6 +16,8 @@ export interface DigestRow {
     epsRevenue: number;
   };
   thesis: string;
+  businessSummary: string | null;
+  caution: string;
   targetPrice: number;
   stopLoss: number;
   horizonDays: number;

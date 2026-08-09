@@ -113,24 +113,32 @@ used to go through SES; see git history if you need to resurrect that path
    about, so it shouldn't end up baked into build artifacts):
    `aws ssm put-parameter --name /digest/gmail-app-password --type
    SecureString --value "xxxx xxxx xxxx xxxx"`.
-4. **Let the app's Lambda read it**: attach an inline IAM policy granting
-   `ssm:GetParameter` (with decryption) on that parameter's ARN to the
-   Amplify app's [SSR compute
+4. **Generate a cron secret and store it in SSM too** — it's what
+   authenticates calls to `/api/digest`, so it's a real secret just like the
+   App Password and shouldn't end up baked into build artifacts either:
+   `openssl rand -hex 32` to generate it, then `aws ssm put-parameter --name
+   /digest/cron-secret --type SecureString --value "<the generated value>"`.
+5. **Let the app's Lambda read both parameters**: attach an inline IAM
+   policy granting `ssm:GetParameter` (with decryption) on both parameters'
+   ARNs to the Amplify app's [SSR compute
    role](https://docs.aws.amazon.com/amplify/latest/userguide/amplify-SSR-compute-role.html)
    (the same role the Gotcha note below points to for real secrets). No AWS
    access keys go in env vars — the SDK picks up the Lambda's own role.
-5. **Add env vars** in Amplify Console → App settings → Environment
+6. **Add env vars** in Amplify Console → App settings → Environment
    variables: `DIGEST_GMAIL_USER` (the Gmail address sending the mail),
    `DIGEST_GMAIL_APP_PASSWORD_PARAM` (the SSM parameter *name* from step 3,
-   e.g. `/digest/gmail-app-password` — not the secret itself, so this one's
-   fine at build time), `DIGEST_RECIPIENT_EMAIL`, `DIGEST_AWS_REGION` (the
-   region you created the SSM parameter in), and `DIGEST_CRON_SECRET` (any
-   random string, e.g. `openssl rand -hex 32`). Redeploy so `amplify.yml`
+   e.g. `/digest/gmail-app-password`), `DIGEST_RECIPIENT_EMAIL`,
+   `DIGEST_AWS_REGION` (the region you created the SSM parameters in), and
+   `DIGEST_CRON_SECRET_PARAM` (the SSM parameter *name* from step 4, e.g.
+   `/digest/cron-secret`). All of these are parameter *names*, not secrets
+   themselves, so they're fine at build time. Redeploy so `amplify.yml`
    picks them into `.env.production`.
-6. **Schedule the daily trigger** with EventBridge Scheduler, since it needs
+7. **Schedule the daily trigger** with EventBridge Scheduler, since it needs
    to call the app's own HTTPS endpoint with a secret header:
    - Create an EventBridge **connection** (`API_KEY` auth, key name
-     `x-digest-secret`, value = your `DIGEST_CRON_SECRET`).
+     `x-digest-secret`, value = the raw secret string you generated in step
+     4 — EventBridge holds this in its own managed connection store, not
+     your build artifacts).
    - Create an EventBridge **API destination** using that connection,
      pointing at `https://<your-amplify-domain>/api/digest`.
    - Create a **Scheduler schedule** targeting that API destination, e.g.

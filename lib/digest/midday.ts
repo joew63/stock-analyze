@@ -1,6 +1,7 @@
 import * as finnhub from "@/lib/providers/finnhub";
 import { DEFAULT_WATCHLIST } from "./watchlist";
 import { fetchMarketBriefing } from "./market";
+import { fetchNewsHighlights } from "./news";
 import type {
   DigestSkip,
   MiddayPulse,
@@ -10,6 +11,9 @@ import type {
 
 const CONCURRENCY = 5;
 const MAX_MOVERS = 5;
+// A midday ping is a glance, not a read — a few market-wide headlines only,
+// no per-symbol news feeds (the morning digest does the deeper pass).
+const MIDDAY_NEWS_COUNT = 3;
 
 async function mapWithConcurrency<T, R>(
   items: T[],
@@ -114,9 +118,10 @@ function computeMiddayPulse(
 export async function runMiddayScan(
   watchlist: string[] = DEFAULT_WATCHLIST
 ): Promise<MiddayResult> {
-  const [outcomes, marketBriefing] = await Promise.all([
+  const [outcomes, marketBriefing, newsHighlights] = await Promise.all([
     mapWithConcurrency(watchlist, CONCURRENCY, quoteSymbol),
     fetchMarketBriefing(),
+    fetchNewsHighlights([], MIDDAY_NEWS_COUNT),
   ]);
 
   const quotes = outcomes
@@ -152,6 +157,7 @@ export async function runMiddayScan(
     gainers,
     losers,
     quotes: byChangeDesc,
+    newsHighlights,
     skipped,
   };
 }

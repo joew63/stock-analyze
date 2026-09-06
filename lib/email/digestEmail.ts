@@ -2,7 +2,6 @@ import type {
   DigestResult,
   DigestRow,
   MarketSentiment,
-  NewsHighlight,
   UpcomingEvent,
 } from "@/lib/digest/types";
 import {
@@ -20,6 +19,8 @@ import {
   footnote,
   h1,
   page,
+  readsSection,
+  relativeTime,
   section,
   SECTION,
 } from "./emailTheme";
@@ -35,14 +36,6 @@ function eventTiming(e: UpcomingEvent): string {
   const rel =
     e.daysUntil <= 0 ? "today" : e.daysUntil === 1 ? "tomorrow" : `in ${e.daysUntil} days`;
   return `${rel} (${dow})`;
-}
-
-// Rough "3h ago" / "2d ago" from a unix-seconds timestamp.
-function relativeTime(unixSec: number): string {
-  const diffSec = Math.max(0, Math.floor(Date.now() / 1000) - unixSec);
-  if (diffSec < 3600) return `${Math.max(1, Math.round(diffSec / 60))}m ago`;
-  if (diffSec < 86_400) return `${Math.round(diffSec / 3600)}h ago`;
-  return `${Math.round(diffSec / 86_400)}d ago`;
 }
 
 function sentimentColor(label: MarketSentiment["label"]): string {
@@ -86,7 +79,7 @@ function renderHtml(result: DigestResult): string {
       sentimentSection(result),
       eventsSection(result),
       standoutsSection(result),
-      readsSection(result),
+      readsSection(result.newsHighlights),
       watchlistSection(result),
       skippedSection(result),
       footnote(
@@ -268,51 +261,6 @@ function standoutsSection(result: DigestResult): string {
     label: `Standouts · ${result.standouts.length}`,
     body: cards,
     note: "Ranked by a blended oversold + proximity-to-low + fundamentals score. ★ STRONG = strong on all three factors individually. Target/stop are a 30-day ±1σ band from historical volatility.",
-  });
-}
-
-function readsSection(result: DigestResult): string {
-  if (result.newsHighlights.length === 0) {
-    return section({
-      theme: "reads",
-      label: "Interesting reads",
-      body: `<div style="font-size:13px;color:${MUTED};">No notable headlines surfaced today.</div>`,
-    });
-  }
-
-  const cards = result.newsHighlights
-    .map(
-      (n: NewsHighlight) => `
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;margin-bottom:8px;">
-        <tr><td style="background:#ffffff;border:1px solid ${HAIRLINE};border-radius:12px;padding:13px 15px;">
-          <a href="${escapeHtml(
-            n.url
-          )}" style="font-size:14px;font-weight:600;color:#1d4ed8;text-decoration:none;line-height:1.4;">${escapeHtml(
-            n.headline
-          )}</a>
-          <div style="margin:5px 0 ${n.summary ? "7px" : "0"};font-size:11px;color:${FAINT};">
-            <span style="background:#eef1f4;color:${MUTED};border-radius:4px;padding:1px 6px;">${escapeHtml(
-              n.category
-            )}</span>
-            &nbsp;${escapeHtml(n.source)} &nbsp;·&nbsp; ${relativeTime(n.datetime)}
-          </div>
-          ${
-            n.summary
-              ? `<div style="font-size:13px;color:${BODY};line-height:1.55;">${escapeHtml(
-                  n.summary
-                )}</div>`
-              : ""
-          }
-        </td></tr>
-      </table>`
-    )
-    .join("");
-
-  return section({
-    theme: "reads",
-    label: "Interesting reads",
-    body: cards,
-    note: "Third-party headlines, ranked by recency and keyword signal — not endorsements.",
   });
 }
 

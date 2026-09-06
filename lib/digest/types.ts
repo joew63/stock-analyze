@@ -120,5 +120,6 @@ export interface MiddayResult {
   gainers: MiddayQuote[];
   losers: MiddayQuote[];
   quotes: MiddayQuote[];
+  newsHighlights: NewsHighlight[];
   skipped: DigestSkip[];
 }

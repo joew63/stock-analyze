@@ -105,7 +105,8 @@ function scoreArticle(item: NewsItem, nowSec: number): number {
 // service can't take over the section. Best-effort — any feed that fails
 // is just skipped.
 export async function fetchNewsHighlights(
-  standoutSymbols: string[]
+  standoutSymbols: string[],
+  limit: number = MAX_HIGHLIGHTS
 ): Promise<NewsHighlight[]> {
   const nowSec = Math.floor(Date.now() / 1000);
   const collected: { item: NewsItem; category: string }[] = [];
@@ -166,16 +167,16 @@ export async function fetchNewsHighlights(
   for (const { item, category, score } of ranked) {
     if (score <= 0) continue;
     take(item, category, MAX_PER_SOURCE);
-    if (highlights.length >= MAX_HIGHLIGHTS) break;
+    if (highlights.length >= limit) break;
   }
 
   // Top-up pass: if the bar left us short of a full section, backfill with
   // the next-freshest headlines (score gate dropped, per-source cap loosened)
-  // so the list reliably lands at MAX_HIGHLIGHTS when the volume exists.
-  if (highlights.length < MAX_HIGHLIGHTS) {
+  // so the list reliably lands at `limit` when the volume exists.
+  if (highlights.length < limit) {
     for (const { item, category } of ranked) {
       take(item, category, MAX_PER_SOURCE + 2);
-      if (highlights.length >= MAX_HIGHLIGHTS) break;
+      if (highlights.length >= limit) break;
     }
   }
 

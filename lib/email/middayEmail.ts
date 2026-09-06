@@ -12,6 +12,8 @@ import {
   footnote,
   h1,
   page,
+  readsSection,
+  relativeTime,
   section,
 } from "./emailTheme";
 
@@ -112,6 +114,14 @@ function renderHtml(result: MiddayResult): string {
     }),
   ];
 
+  if (result.newsHighlights.length > 0) {
+    parts.push(
+      readsSection(result.newsHighlights, {
+        note: "Market-wide headlines, ranked by recency and keyword signal — not endorsements.",
+      })
+    );
+  }
+
   if (result.skipped.length > 0) {
     parts.push(
       section({
@@ -170,6 +180,17 @@ function renderText(result: MiddayResult): string {
   lines.push("TOP LOSERS");
   moverLines(result.losers);
   lines.push("");
+
+  if (result.newsHighlights.length > 0) {
+    lines.push("INTERESTING READS");
+    for (const n of result.newsHighlights) {
+      lines.push(`- ${n.headline}`);
+      lines.push(`  ${n.category} · ${n.source} · ${relativeTime(n.datetime)}`);
+      if (n.summary) lines.push(`  ${n.summary}`);
+      lines.push(`  ${n.url}`);
+      lines.push("");
+    }
+  }
 
   if (result.skipped.length > 0) {
     lines.push("No live quote (skipped):");

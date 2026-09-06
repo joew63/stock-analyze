@@ -49,12 +49,12 @@ export function renderMiddayEmail(result: MiddayResult): RenderedMiddayEmail {
 
   return {
     subject,
-    html: renderHtml(result, stamp),
-    text: renderText(result, stamp),
+    html: renderHtml(result),
+    text: renderText(result),
   };
 }
 
-function renderHtml(result: MiddayResult, stamp: string): string {
+function renderHtml(result: MiddayResult): string {
   const sectionTitleStyle =
     "font-size:14px;font-weight:600;color:#171717;margin:24px 0 8px 0;";
 
@@ -105,13 +105,7 @@ function renderHtml(result: MiddayResult, stamp: string): string {
 
   return `
 <div style="max-width:640px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#ffffff;color:#171717;padding:20px;">
-  <h1 style="font-size:18px;margin:0 0 4px 0;">Midday market update — ${stamp}</h1>
-  <p style="font-size:12px;color:#737373;margin:0 0 12px 0;">
-    An intraday snapshot of live prices only. Quoted ${result.quotedCount} of
-    ${result.watchlistSize} watchlist symbols plus the four benchmark ETFs. No RSI,
-    scores, targets, or stop-losses here — those come from end-of-day data and don't
-    change through the trading day; see the morning digest for that.
-  </p>
+  <h1 style="font-size:18px;margin:0 0 12px 0;">☀️ afternoon</h1>
 
   <div style="${sectionTitleStyle}">Benchmarks</div>
   <table style="border-collapse:collapse;margin-bottom:8px;">${benchmarkRows}</table>
@@ -143,8 +137,8 @@ function renderHtml(result: MiddayResult, stamp: string): string {
 </div>`;
 }
 
-function renderText(result: MiddayResult, stamp: string): string {
-  const lines: string[] = [`Midday market update — ${stamp}`, ""];
+function renderText(result: MiddayResult): string {
+  const lines: string[] = ["☀️ afternoon", ""];
 
   lines.push("BENCHMARKS");
   for (const b of result.marketBriefing.benchmarks) {

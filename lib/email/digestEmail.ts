@@ -88,13 +88,13 @@ export function renderDigestEmail(result: DigestResult): RenderedDigestEmail {
         }`
       : baseSubject;
 
-  const html = renderHtml(result, date);
-  const text = renderText(result, date);
+  const html = renderHtml(result);
+  const text = renderText(result);
 
   return { subject, html, text };
 }
 
-function renderHtml(result: DigestResult, date: string): string {
+function renderHtml(result: DigestResult): string {
   const cardStyle = (highlighted: boolean) =>
     `border:1px solid ${
       highlighted ? "#d97706" : "#e5e5e5"
@@ -297,18 +297,7 @@ function renderHtml(result: DigestResult, date: string): string {
 
   return `
 <div style="max-width:640px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#ffffff;color:#171717;padding:20px;">
-  <h1 style="font-size:18px;margin:0 0 4px 0;">Daily stock digest — ${date}</h1>
-  <p style="font-size:12px;color:#737373;margin:0 0 12px 0;">
-    Scanned ${result.watchlistSize} watchlist symbols. Standouts are ranked by an oversold +
-    proximity-to-low + fundamentals score; a ★ Strong signal badge means a symbol scores well on
-    all three factors individually, not just on the blended score. "What they do" and "Worth
-    watching" are composed from the company profile and grade sub-metrics already in the scan —
-    not third-party commentary. Target/stop are a statistical 30-day ±1σ band from historical
-    volatility. Market sentiment is a deterministic breadth/RSI/benchmark gauge, not a third-party
-    index. "Upcoming events" lists watchlist earnings dates from Finnhub's calendar; "Interesting
-    reads" are third-party headlines ranked by recency and keyword signal — the only part of this
-    email that isn't self-computed.
-  </p>
+  <h1 style="font-size:18px;margin:0 0 12px 0;">🌅 morning</h1>
   ${marketSection}
   ${eventsSection}
   ${standoutSection}
@@ -318,8 +307,8 @@ function renderHtml(result: DigestResult, date: string): string {
 </div>`;
 }
 
-function renderText(result: DigestResult, date: string): string {
-  const lines: string[] = [`Daily stock digest — ${date}`, ""];
+function renderText(result: DigestResult): string {
+  const lines: string[] = ["🌅 morning", ""];
 
   lines.push("MARKET BRIEFING");
   for (const b of result.marketBriefing.benchmarks) {

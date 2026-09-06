@@ -1,12 +1,19 @@
 import type { MiddayPulse, MiddayQuote, MiddayResult } from "@/lib/digest/types";
-
-function fmtCurrency(n: number): string {
-  return `$${n.toFixed(2)}`;
-}
-
-function fmtPct(n: number): string {
-  return `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
-}
+import {
+  BODY,
+  fmtCurrency,
+  fmtPct,
+  INK,
+  MUTED,
+  UP,
+  DOWN,
+  changeColor,
+  escapeHtml,
+  footnote,
+  h1,
+  page,
+  section,
+} from "./emailTheme";
 
 // "2026-09-05 13:45 ET" — the time matters for an intraday update in a way
 // it doesn't for the daily digest, so spell it out in US market time.
@@ -23,15 +30,9 @@ function stampLabel(iso: string): string {
 }
 
 function pulseColor(label: MiddayPulse["label"]): string {
-  if (label === "Bullish") return "#059669";
-  if (label === "Bearish") return "#dc2626";
-  return "#737373";
-}
-
-function changeColor(n: number): string {
-  if (n > 0) return "#059669";
-  if (n < 0) return "#dc2626";
-  return "#525252";
+  if (label === "Bullish") return UP;
+  if (label === "Bearish") return DOWN;
+  return MUTED;
 }
 
 export interface RenderedMiddayEmail {
@@ -54,87 +55,103 @@ export function renderMiddayEmail(result: MiddayResult): RenderedMiddayEmail {
   };
 }
 
-function renderHtml(result: MiddayResult): string {
-  const sectionTitleStyle =
-    "font-size:14px;font-weight:600;color:#171717;margin:24px 0 8px 0;";
-
-  const benchmarkRows = result.marketBriefing.benchmarks
+function moverTable(quotes: MiddayQuote[]): string {
+  if (quotes.length === 0) {
+    return `<div style="font-size:13px;color:${MUTED};">None.</div>`;
+  }
+  const rows = quotes
     .map(
-      (b) =>
-        `<tr>` +
-        `<td style="padding:4px 10px 4px 0;font-size:13px;color:#171717;">${b.label}</td>` +
-        `<td style="padding:4px 10px 4px 0;font-size:13px;color:#171717;">${fmtCurrency(
+      (q) => `
+      <tr>
+        <td style="padding:4px 14px 4px 0;font-size:13px;color:${INK};font-weight:700;">${q.symbol}</td>
+        <td style="padding:4px 14px 4px 0;font-size:13px;color:${INK};text-align:right;">${fmtCurrency(
+          q.price
+        )}</td>
+        <td style="padding:4px 0;font-size:13px;font-weight:700;text-align:right;color:${changeColor(
+          q.changePercent
+        )};">${fmtPct(q.changePercent)}</td>
+      </tr>`
+    )
+    .join("");
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">${rows}</table>`;
+}
+
+function renderHtml(result: MiddayResult): string {
+  const benchRows = result.marketBriefing.benchmarks
+    .map(
+      (b) => `
+      <tr>
+        <td style="padding:5px 14px 5px 0;font-size:13px;color:${MUTED};">${b.label}</td>
+        <td style="padding:5px 14px 5px 0;font-size:13px;color:${INK};text-align:right;">${fmtCurrency(
           b.price
-        )}</td>` +
-        `<td style="padding:4px 0;font-size:13px;font-weight:600;color:${changeColor(
+        )}</td>
+        <td style="padding:5px 0;font-size:13px;font-weight:700;text-align:right;color:${changeColor(
           b.changePercent
-        )};">${fmtPct(b.changePercent)}</td>` +
-        `</tr>`
+        )};">${fmtPct(b.changePercent)}</td>
+      </tr>`
     )
     .join("");
 
-  const moverList = (quotes: MiddayQuote[]) =>
-    quotes.length > 0
-      ? `<table style="border-collapse:collapse;">` +
-        quotes
-          .map(
-            (q) =>
-              `<tr>` +
-              `<td style="padding:3px 12px 3px 0;font-size:13px;color:#171717;font-weight:600;">${q.symbol}</td>` +
-              `<td style="padding:3px 12px 3px 0;font-size:13px;color:#171717;">${fmtCurrency(
-                q.price
-              )}</td>` +
-              `<td style="padding:3px 0;font-size:13px;font-weight:600;color:${changeColor(
-                q.changePercent
-              )};">${fmtPct(q.changePercent)}</td>` +
-              `</tr>`
-          )
-          .join("") +
-        `</table>`
-      : `<div style="font-size:13px;color:#737373;">None.</div>`;
+  const pulse = result.pulse;
+  const pColor = pulseColor(pulse.label);
 
-  const skipped =
-    result.skipped.length > 0
-      ? `<div style="margin-top:16px;font-size:12px;color:#a3a3a3;">
-           <div style="margin-bottom:4px;">No live quote (skipped):</div>
-           ${result.skipped
-             .map((s) => `${s.symbol} (${s.reason})`)
-             .join(" &nbsp;·&nbsp; ")}
-         </div>`
-      : "";
+  const parts = [
+    h1("☀️ afternoon"),
+    section({
+      theme: "briefing",
+      label: "Benchmarks",
+      body: `
+        <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">${benchRows}</table>
+        <div style="margin-top:10px;font-size:13px;color:${BODY};line-height:1.55;">${result.marketBriefing.summary}</div>`,
+    }),
+    section({
+      theme: "sentiment",
+      label: "Intraday pulse",
+      body: `
+        <div style="margin-bottom:8px;">
+          <span style="display:inline-block;padding:3px 11px;border-radius:999px;background:${pColor};color:#ffffff;font-size:12px;font-weight:700;letter-spacing:.02em;">${
+            pulse.label
+          }</span>
+          <span style="margin-left:8px;font-size:12px;color:${MUTED};">${pulse.score.toFixed(
+            0
+          )}/100</span>
+        </div>
+        <div style="font-size:13px;color:${BODY};line-height:1.55;">${pulse.summary}</div>`,
+    }),
+    section({
+      theme: "gainers",
+      label: `Top gainers${result.gainers.length ? ` · ${result.gainers.length}` : ""}`,
+      body: moverTable(result.gainers),
+    }),
+    section({
+      theme: "losers",
+      label: `Top losers${result.losers.length ? ` · ${result.losers.length}` : ""}`,
+      body: moverTable(result.losers),
+    }),
+  ];
 
-  return `
-<div style="max-width:640px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#ffffff;color:#171717;padding:20px;">
-  <h1 style="font-size:18px;margin:0 0 12px 0;">☀️ afternoon</h1>
+  if (result.skipped.length > 0) {
+    parts.push(
+      section({
+        theme: "skipped",
+        label: "No live quote",
+        body: `<div style="font-size:12px;color:${MUTED};line-height:1.6;">${result.skipped
+          .map((s) => `${s.symbol} (${escapeHtml(s.reason)})`)
+          .join(" &nbsp;·&nbsp; ")}</div>`,
+      })
+    );
+  }
 
-  <div style="${sectionTitleStyle}">Benchmarks</div>
-  <table style="border-collapse:collapse;margin-bottom:8px;">${benchmarkRows}</table>
-  <div style="font-size:13px;color:#404040;line-height:1.5;margin-bottom:16px;">
-    ${result.marketBriefing.summary}
-  </div>
+  parts.push(
+    footnote(
+      `Intraday snapshot of live prices only — quoted ${result.quotedCount} of ${result.watchlistSize} ` +
+        "watchlist names plus the benchmark ETFs. No RSI, scores, or targets; those are end-of-day " +
+        "(see the morning digest). Quotes via Finnhub, delayed per their free tier. Pulse is a " +
+        "deterministic breadth + benchmark gauge. NFA."
+    )
+  );
 
-  <div style="${sectionTitleStyle}margin-top:0;">
-    Intraday pulse: <span style="color:${pulseColor(result.pulse.label)};">${
-      result.pulse.label
-    }</span>
-  </div>
-  <div style="font-size:13px;color:#404040;line-height:1.5;margin-bottom:8px;">
-    ${result.pulse.summary}
-  </div>
-
-  <div style="${sectionTitleStyle}">Top gainers</div>
-  ${moverList(result.gainers)}
-
-  <div style="${sectionTitleStyle}">Top losers</div>
-  ${moverList(result.losers)}
-
-  ${skipped}
-
-  <p style="margin-top:24px;font-size:12px;color:#a3a3a3;line-height:1.5;">
-    Intraday quotes via Finnhub, delayed per their free tier. Pulse is a deterministic
-    breadth + benchmark gauge, not a third-party index. NFA.
-  </p>
-</div>`;
+  return page(parts.join(""));
 }
 
 function renderText(result: MiddayResult): string {

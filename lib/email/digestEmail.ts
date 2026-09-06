@@ -5,25 +5,27 @@ import type {
   NewsHighlight,
   UpcomingEvent,
 } from "@/lib/digest/types";
-
-function fmtCurrency(n: number): string {
-  return `$${n.toFixed(2)}`;
-}
-
-function fmtPct(n: number): string {
-  return `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
-}
+import {
+  BODY,
+  FAINT,
+  fmtCurrency,
+  fmtPct,
+  HAIRLINE,
+  INK,
+  MUTED,
+  UP,
+  DOWN,
+  changeColor,
+  escapeHtml,
+  footnote,
+  h1,
+  page,
+  section,
+  SECTION,
+} from "./emailTheme";
 
 function todayLabel(iso: string): string {
   return iso.slice(0, 10);
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
 
 // "in 2 days (Tue, Sep 9)" style label for a calendar event.
@@ -48,21 +50,22 @@ function relativeTime(unixSec: number): string {
 }
 
 function sentimentColor(label: MarketSentiment["label"]): string {
-  if (label === "Bullish") return "#059669";
-  if (label === "Bearish") return "#dc2626";
-  return "#737373";
-}
-
-function changeColor(n: number): string {
-  if (n > 0) return "#059669";
-  if (n < 0) return "#dc2626";
-  return "#525252";
+  if (label === "Bullish") return UP;
+  if (label === "Bearish") return DOWN;
+  return MUTED;
 }
 
 function flagFor(row: DigestRow): string {
   if (row.oversold) return "Oversold";
   if (row.overbought) return "Overbought";
   return "";
+}
+
+function flagChip(row: DigestRow): string {
+  const label = flagFor(row);
+  if (!label) return "";
+  const [bg, fg] = row.overbought ? ["#fee2e2", "#991b1b"] : ["#fef3c7", "#92400e"];
+  return `<span style="display:inline-block;background:${bg};color:${fg};border-radius:4px;padding:1px 7px;font-size:11px;font-weight:600;">${label}</span>`;
 }
 
 export interface RenderedDigestEmail {
@@ -95,216 +98,303 @@ export function renderDigestEmail(result: DigestResult): RenderedDigestEmail {
 }
 
 function renderHtml(result: DigestResult): string {
-  const cardStyle = (highlighted: boolean) =>
-    `border:1px solid ${
-      highlighted ? "#d97706" : "#e5e5e5"
-    };border-radius:12px;padding:16px;margin-bottom:12px;${highlighted ? "background:#fffbeb;" : ""}`;
-  const sectionTitleStyle = "font-size:14px;font-weight:600;color:#171717;margin:24px 0 8px 0;";
-  const labelStyle = "color:#737373;font-size:12px;";
-  const gradeRow = (grades: DigestRow["grades"]) =>
-    `Valuation ${grades.valuation.toFixed(0)} · Growth ${grades.growth.toFixed(0)} · ` +
-    `Profitability ${grades.profitability.toFixed(0)} · Momentum ${grades.momentum.toFixed(
-      0
-    )} · EPS &amp; Revenue ${grades.epsRevenue.toFixed(0)}`;
+  return page(
+    [
+      h1("🌅 morning"),
+      briefingSection(result),
+      sentimentSection(result),
+      eventsSection(result),
+      standoutsSection(result),
+      readsSection(result),
+      watchlistSection(result),
+      skippedSection(result),
+      footnote(
+        "Not advice. Sentiment and target/stop bands are self-computed from price and " +
+          "fundamentals data; “Interesting reads” are third-party headlines. NFA."
+      ),
+    ].join("")
+  );
+}
 
-  const benchmarkRow = result.marketBriefing.benchmarks
+function briefingSection(result: DigestResult): string {
+  const rows = result.marketBriefing.benchmarks
     .map(
-      (b) =>
-        `<td style="padding:4px 10px 4px 0;font-size:13px;color:#171717;">${b.label}</td>` +
-        `<td style="padding:4px 10px 4px 0;font-size:13px;color:#171717;">${fmtCurrency(b.price)}</td>` +
-        `<td style="padding:4px 0;font-size:13px;font-weight:600;color:${changeColor(
-          b.changePercent
-        )};">${fmtPct(b.changePercent)}</td>`
-    )
-    .map((cells) => `<tr>${cells}</tr>`)
-    .join("");
-
-  const marketSection = `
-  <div style="${sectionTitleStyle}">Market briefing</div>
-  <table style="border-collapse:collapse;margin-bottom:8px;">${benchmarkRow}</table>
-  <div style="font-size:13px;color:#404040;line-height:1.5;margin-bottom:16px;">
-    ${result.marketBriefing.summary}
-  </div>
-  <div style="${sectionTitleStyle}margin-top:0;">
-    Market sentiment: <span style="color:${sentimentColor(result.marketSentiment.label)};">${
-      result.marketSentiment.label
-    }</span>
-  </div>
-  <div style="font-size:13px;color:#404040;line-height:1.5;margin-bottom:8px;">
-    ${result.marketSentiment.summary}
-  </div>`;
-
-  const standoutCards = result.standouts
-    .map(
-      (c) => `
-      <div style="${cardStyle(c.allFactorsStrong)}">
-        <div style="font-size:16px;font-weight:600;color:#171717;">
-          ${c.symbol} <span style="font-weight:400;color:#525252;">— ${c.name}</span>
-          ${
-            c.allFactorsStrong
-              ? `<span style="margin-left:8px;background:#d97706;color:#ffffff;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:600;vertical-align:middle;">★ Strong signal</span>`
-              : ""
-          }
-        </div>
-        <div style="margin:4px 0 10px 0;font-size:14px;color:#171717;">
-          ${fmtCurrency(c.price)} &nbsp;·&nbsp;
-          <span style="color:${changeColor(c.changePercent)};">${fmtPct(c.changePercent)}</span>
-          &nbsp;·&nbsp; RSI(14) ${c.rsi.toFixed(0)} &nbsp;·&nbsp; score ${c.score.toFixed(0)}/100
-          ${flagFor(c) ? ` &nbsp;·&nbsp; ${flagFor(c)}` : ""}
-        </div>
-        <div style="font-size:13px;color:#404040;line-height:1.5;margin-bottom:10px;">
-          ${c.thesis}
-        </div>
-        ${
-          c.businessSummary
-            ? `<div style="font-size:13px;color:#404040;line-height:1.5;margin-bottom:8px;">
-                 <b style="color:#171717;">What they do:</b> ${c.businessSummary}
-               </div>`
-            : ""
-        }
-        <div style="font-size:13px;color:#7c2d12;line-height:1.5;margin-bottom:10px;">
-          <b>Worth watching:</b> ${c.caution}
-        </div>
-        <div style="font-size:13px;color:#171717;margin-bottom:6px;">
-          Target (${c.horizonDays}d): <b style="color:#059669;">${fmtCurrency(
-            c.targetPrice
-          )}</b> &nbsp;·&nbsp; Stop-loss: <b style="color:#dc2626;">${fmtCurrency(c.stopLoss)}</b>
-        </div>
-        <div style="${labelStyle}">${gradeRow(c.grades)}</div>
-      </div>`
-    )
-    .join("");
-
-  const standoutSection = `
-  <div style="${sectionTitleStyle}">Standouts</div>
-  ${
-    result.standouts.length > 0
-      ? standoutCards
-      : `<div style="${cardStyle(false)}color:#525252;font-size:14px;">No standouts today.</div>`
-  }`;
-
-  const standoutSymbols = new Set(result.standouts.map((r) => r.symbol));
-  const fullListRows = result.rows
-    .map((r) => {
-      const flag = flagFor(r);
-      return `<tr style="border-bottom:1px solid #f0f0f0;">
-        <td style="padding:6px 8px 6px 0;font-size:13px;color:#171717;">${
-          standoutSymbols.has(r.symbol) ? "★ " : ""
-        }${r.symbol}</td>
-        <td style="padding:6px 8px;font-size:13px;color:#171717;">${fmtCurrency(r.price)}</td>
-        <td style="padding:6px 8px;font-size:13px;color:${changeColor(r.changePercent)};">${fmtPct(
-          r.changePercent
+      (b) => `
+      <tr>
+        <td style="padding:5px 14px 5px 0;font-size:13px;color:${MUTED};">${b.label}</td>
+        <td style="padding:5px 14px 5px 0;font-size:13px;color:${INK};text-align:right;">${fmtCurrency(
+          b.price
         )}</td>
-        <td style="padding:6px 8px;font-size:13px;color:#171717;">${r.rsi.toFixed(0)}</td>
-        <td style="padding:6px 8px;font-size:13px;color:#171717;">${r.score.toFixed(0)}</td>
-        <td style="padding:6px 0;font-size:12px;color:#737373;">${flag}</td>
-      </tr>`;
-    })
+        <td style="padding:5px 0;font-size:13px;font-weight:700;text-align:right;color:${changeColor(
+          b.changePercent
+        )};">${fmtPct(b.changePercent)}</td>
+      </tr>`
+    )
     .join("");
 
-  const fullListSection = `
-  <div style="${sectionTitleStyle}">Full watchlist (${result.rows.length})</div>
-  <table style="border-collapse:collapse;width:100%;">
-    <thead>
-      <tr style="border-bottom:1px solid #d4d4d4;">
-        <th style="text-align:left;padding:0 8px 6px 0;font-size:11px;color:#a3a3a3;">Symbol</th>
-        <th style="text-align:left;padding:0 8px 6px;font-size:11px;color:#a3a3a3;">Price</th>
-        <th style="text-align:left;padding:0 8px 6px;font-size:11px;color:#a3a3a3;">Chg</th>
-        <th style="text-align:left;padding:0 8px 6px;font-size:11px;color:#a3a3a3;">RSI</th>
-        <th style="text-align:left;padding:0 8px 6px;font-size:11px;color:#a3a3a3;">Score</th>
-        <th style="text-align:left;padding:0 0 6px;font-size:11px;color:#a3a3a3;"></th>
-      </tr>
-    </thead>
-    <tbody>${fullListRows}</tbody>
-  </table>`;
+  return section({
+    theme: "briefing",
+    label: "Market briefing",
+    body: `
+      <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">${rows}</table>
+      <div style="margin-top:10px;font-size:13px;color:${BODY};line-height:1.55;">${result.marketBriefing.summary}</div>`,
+  });
+}
 
-  const skippedList =
-    result.skipped.length > 0
-      ? `<div style="margin-top:16px;font-size:12px;color:#a3a3a3;">
-           <div style="margin-bottom:4px;">Not scored (data gaps):</div>
-           ${result.skipped
-             .map((s) => `${s.symbol} (${s.reason})`)
-             .join(" &nbsp;·&nbsp; ")}
-         </div>`
-      : "";
+function sentimentSection(result: DigestResult): string {
+  const s = result.marketSentiment;
+  const color = sentimentColor(s.label);
+  return section({
+    theme: "sentiment",
+    label: "Market sentiment",
+    body: `
+      <div style="margin-bottom:8px;">
+        <span style="display:inline-block;padding:3px 11px;border-radius:999px;background:${color};color:#ffffff;font-size:12px;font-weight:700;letter-spacing:.02em;">${
+          s.label
+        }</span>
+        <span style="margin-left:8px;font-size:12px;color:${MUTED};">${s.score.toFixed(0)}/100</span>
+      </div>
+      <div style="font-size:13px;color:${BODY};line-height:1.55;">${s.summary}</div>`,
+  });
+}
 
-  const eventRows = result.upcomingEvents
+function eventsSection(result: DigestResult): string {
+  if (result.upcomingEvents.length === 0) {
+    return section({
+      theme: "events",
+      label: "Upcoming events · next 14 days",
+      body: `<div style="font-size:13px;color:${MUTED};">No watchlist earnings scheduled in the next 14 days.</div>`,
+    });
+  }
+
+  const rows = result.upcomingEvents
     .map((e) => {
       const imminent = e.daysUntil <= 1;
-      return `<tr style="border-bottom:1px solid #f0f0f0;">
-        <td style="padding:6px 10px 6px 0;font-size:13px;color:#171717;font-weight:600;">${
-          imminent ? "⚠ " : ""
-        }${e.symbol}</td>
-        <td style="padding:6px 10px 6px 0;font-size:13px;color:#525252;">${escapeHtml(e.name)}</td>
-        <td style="padding:6px 10px 6px 0;font-size:13px;color:${
-          imminent ? "#b45309" : "#171717"
-        };">${eventTiming(e)}${e.when ? `, ${e.when}` : ""}</td>
-        <td style="padding:6px 0;font-size:13px;color:#737373;">${
-          typeof e.epsEstimate === "number" && Number.isFinite(e.epsEstimate)
-            ? `est. EPS $${e.epsEstimate.toFixed(2)}`
-            : ""
+      const dot = imminent
+        ? `<span style="display:inline-block;width:6px;height:6px;border-radius:999px;background:${SECTION.events.accent};margin-right:7px;vertical-align:middle;"></span>`
+        : "";
+      const est =
+        typeof e.epsEstimate === "number" && Number.isFinite(e.epsEstimate)
+          ? `est. EPS $${e.epsEstimate.toFixed(2)}`
+          : "";
+      return `
+      <tr>
+        <td style="padding:6px 12px 6px 0;font-size:13px;color:${INK};font-weight:700;white-space:nowrap;">${dot}${
+          e.symbol
         }</td>
+        <td style="padding:6px 12px 6px 0;font-size:13px;color:${MUTED};">${escapeHtml(e.name)}</td>
+        <td style="padding:6px 12px 6px 0;font-size:13px;color:${
+          imminent ? "#b45309" : INK
+        };white-space:nowrap;">${eventTiming(e)}${e.when ? `, ${e.when}` : ""}</td>
+        <td style="padding:6px 0;font-size:12px;color:${FAINT};white-space:nowrap;">${est}</td>
       </tr>`;
     })
     .join("");
 
-  const eventsSection = `
-  <div style="${sectionTitleStyle}">Upcoming events (next 14 days)</div>
-  ${
-    result.upcomingEvents.length > 0
-      ? `<table style="border-collapse:collapse;width:100%;">
-          <tbody>${eventRows}</tbody>
-        </table>
-        <div style="font-size:12px;color:#737373;line-height:1.5;margin-top:6px;">
-          ${result.upcomingEvents.length} watchlist ${
-            result.upcomingEvents.length === 1 ? "company reports" : "companies report"
-          } earnings in this window. Earnings dates from Finnhub's calendar and can shift.
-        </div>`
-      : `<div style="font-size:13px;color:#525252;">No watchlist earnings scheduled in the next 14 days.</div>`
-  }`;
+  return section({
+    theme: "events",
+    label: "Upcoming events · next 14 days",
+    body: `<table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;">${rows}</table>`,
+    note: `${result.upcomingEvents.length} watchlist ${
+      result.upcomingEvents.length === 1 ? "company reports" : "companies report"
+    } earnings in this window. Dates from Finnhub's calendar and can shift.`,
+  });
+}
 
-  const newsCards = result.newsHighlights
+function standoutsSection(result: DigestResult): string {
+  if (result.standouts.length === 0) {
+    return section({
+      theme: "standouts",
+      label: "Standouts",
+      body: `<div style="font-size:13px;color:${MUTED};">No standouts today.</div>`,
+    });
+  }
+
+  const accent = SECTION.standouts.accent;
+  const cards = result.standouts
+    .map((c) => {
+      const borderColor = c.allFactorsStrong ? "#e0b528" : HAIRLINE;
+      const badge = c.allFactorsStrong
+        ? `<span style="display:inline-block;margin-left:8px;background:#d97706;color:#ffffff;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700;letter-spacing:.03em;vertical-align:middle;">★ STRONG</span>`
+        : "";
+      const score = Math.max(0, Math.min(100, c.score));
+      const business = c.businessSummary
+        ? `<div style="font-size:13px;color:${BODY};line-height:1.55;margin-bottom:8px;"><span style="color:${INK};font-weight:600;">What they do:</span> ${escapeHtml(
+            c.businessSummary
+          )}</div>`
+        : "";
+      return `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;margin-bottom:10px;">
+        <tr><td style="background:#ffffff;border:1px solid ${borderColor};border-radius:12px;padding:15px 16px;">
+          <div style="font-size:15px;font-weight:700;color:${INK};">
+            ${c.symbol}<span style="font-weight:400;color:${MUTED};"> — ${escapeHtml(c.name)}</span>${badge}
+          </div>
+          <div style="margin:6px 0 8px;font-size:13px;color:${INK};">
+            <b>${fmtCurrency(c.price)}</b>
+            &nbsp;<span style="color:${changeColor(c.changePercent)};font-weight:600;">${fmtPct(
+              c.changePercent
+            )}</span>
+            &nbsp;·&nbsp; RSI ${c.rsi.toFixed(0)}
+            &nbsp;·&nbsp; score ${c.score.toFixed(0)}
+            ${flagChip(c) ? `&nbsp; ${flagChip(c)}` : ""}
+          </div>
+          <div style="height:4px;background:#ececf5;border-radius:999px;overflow:hidden;margin-bottom:10px;">
+            <div style="height:4px;width:${score.toFixed(0)}%;background:${accent};"></div>
+          </div>
+          <div style="font-size:13px;color:${BODY};line-height:1.55;margin-bottom:8px;">${escapeHtml(
+            c.thesis
+          )}</div>
+          ${business}
+          <div style="font-size:13px;color:#7c2d12;line-height:1.55;margin-bottom:12px;"><span style="font-weight:600;">Worth watching:</span> ${escapeHtml(
+            c.caution
+          )}</div>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:separate;">
+            <tr>
+              <td style="padding-right:8px;">
+                <div style="background:#ecfdf3;border-radius:8px;padding:7px 12px;">
+                  <div style="font-size:10px;color:${MUTED};text-transform:uppercase;letter-spacing:.05em;">Target · ${
+                    c.horizonDays
+                  }d</div>
+                  <div style="font-size:14px;font-weight:700;color:${UP};">${fmtCurrency(
+                    c.targetPrice
+                  )}</div>
+                </div>
+              </td>
+              <td>
+                <div style="background:#fef2f2;border-radius:8px;padding:7px 12px;">
+                  <div style="font-size:10px;color:${MUTED};text-transform:uppercase;letter-spacing:.05em;">Stop-loss</div>
+                  <div style="font-size:14px;font-weight:700;color:${DOWN};">${fmtCurrency(
+                    c.stopLoss
+                  )}</div>
+                </div>
+              </td>
+            </tr>
+          </table>
+          <div style="margin-top:10px;font-size:11px;color:${FAINT};">
+            Valuation ${c.grades.valuation.toFixed(0)} · Growth ${c.grades.growth.toFixed(
+              0
+            )} · Profitability ${c.grades.profitability.toFixed(0)} · Momentum ${c.grades.momentum.toFixed(
+              0
+            )} · EPS&nbsp;&amp;&nbsp;Revenue ${c.grades.epsRevenue.toFixed(0)}
+          </div>
+        </td></tr>
+      </table>`;
+    })
+    .join("");
+
+  return section({
+    theme: "standouts",
+    label: `Standouts · ${result.standouts.length}`,
+    body: cards,
+    note: "Ranked by a blended oversold + proximity-to-low + fundamentals score. ★ STRONG = strong on all three factors individually. Target/stop are a 30-day ±1σ band from historical volatility.",
+  });
+}
+
+function readsSection(result: DigestResult): string {
+  if (result.newsHighlights.length === 0) {
+    return section({
+      theme: "reads",
+      label: "Interesting reads",
+      body: `<div style="font-size:13px;color:${MUTED};">No notable headlines surfaced today.</div>`,
+    });
+  }
+
+  const cards = result.newsHighlights
     .map(
       (n: NewsHighlight) => `
-      <div style="border:1px solid #e5e5e5;border-radius:12px;padding:14px;margin-bottom:10px;">
-        <a href="${escapeHtml(n.url)}" style="font-size:14px;font-weight:600;color:#1d4ed8;text-decoration:none;line-height:1.4;">
-          ${escapeHtml(n.headline)}
-        </a>
-        <div style="margin:4px 0 ${n.summary ? "8px" : "0"} 0;font-size:11px;color:#a3a3a3;">
-          <span style="background:#f5f5f5;color:#525252;border-radius:4px;padding:1px 6px;">${escapeHtml(
-            n.category
-          )}</span>
-          &nbsp;${escapeHtml(n.source)} &nbsp;·&nbsp; ${relativeTime(n.datetime)}
-        </div>
-        ${
-          n.summary
-            ? `<div style="font-size:13px;color:#404040;line-height:1.5;">${escapeHtml(
-                n.summary
-              )}</div>`
-            : ""
-        }
-      </div>`
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;margin-bottom:8px;">
+        <tr><td style="background:#ffffff;border:1px solid ${HAIRLINE};border-radius:12px;padding:13px 15px;">
+          <a href="${escapeHtml(
+            n.url
+          )}" style="font-size:14px;font-weight:600;color:#1d4ed8;text-decoration:none;line-height:1.4;">${escapeHtml(
+            n.headline
+          )}</a>
+          <div style="margin:5px 0 ${n.summary ? "7px" : "0"};font-size:11px;color:${FAINT};">
+            <span style="background:#eef1f4;color:${MUTED};border-radius:4px;padding:1px 6px;">${escapeHtml(
+              n.category
+            )}</span>
+            &nbsp;${escapeHtml(n.source)} &nbsp;·&nbsp; ${relativeTime(n.datetime)}
+          </div>
+          ${
+            n.summary
+              ? `<div style="font-size:13px;color:${BODY};line-height:1.55;">${escapeHtml(
+                  n.summary
+                )}</div>`
+              : ""
+          }
+        </td></tr>
+      </table>`
     )
     .join("");
 
-  const newsSection = `
-  <div style="${sectionTitleStyle}">Interesting reads</div>
-  ${
-    result.newsHighlights.length > 0
-      ? newsCards
-      : `<div style="font-size:13px;color:#525252;">No notable headlines surfaced today.</div>`
-  }`;
+  return section({
+    theme: "reads",
+    label: "Interesting reads",
+    body: cards,
+    note: "Third-party headlines, ranked by recency and keyword signal — not endorsements.",
+  });
+}
 
-  return `
-<div style="max-width:640px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#ffffff;color:#171717;padding:20px;">
-  <h1 style="font-size:18px;margin:0 0 12px 0;">🌅 morning</h1>
-  ${marketSection}
-  ${eventsSection}
-  ${standoutSection}
-  ${newsSection}
-  ${fullListSection}
-  ${skippedList}
-</div>`;
+function watchlistSection(result: DigestResult): string {
+  const standoutSymbols = new Set(result.standouts.map((r) => r.symbol));
+  const th =
+    "text-align:right;padding:0 0 7px 8px;font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:" +
+    FAINT +
+    ";";
+  const rows = result.rows
+    .map((r, i) => {
+      const flag = flagFor(r);
+      const star = standoutSymbols.has(r.symbol)
+        ? `<span style="color:#d97706;">★</span> `
+        : "";
+      return `<tr style="background:${i % 2 ? "#ffffff" : "#fbfbfc"};">
+        <td style="padding:6px 8px 6px 0;font-size:13px;color:${INK};">${star}${r.symbol}</td>
+        <td style="padding:6px 0 6px 8px;font-size:13px;color:${INK};text-align:right;">${fmtCurrency(
+          r.price
+        )}</td>
+        <td style="padding:6px 0 6px 8px;font-size:13px;text-align:right;color:${changeColor(
+          r.changePercent
+        )};">${fmtPct(r.changePercent)}</td>
+        <td style="padding:6px 0 6px 8px;font-size:13px;color:${INK};text-align:right;">${r.rsi.toFixed(
+          0
+        )}</td>
+        <td style="padding:6px 0 6px 8px;font-size:13px;color:${INK};text-align:right;">${r.score.toFixed(
+          0
+        )}</td>
+        <td style="padding:6px 0 6px 10px;font-size:11px;color:${MUTED};text-align:right;white-space:nowrap;">${flag}</td>
+      </tr>`;
+    })
+    .join("");
+
+  return section({
+    theme: "watchlist",
+    label: `Full watchlist · ${result.rows.length}`,
+    body: `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+        <thead>
+          <tr style="border-bottom:1px solid ${HAIRLINE};">
+            <th style="text-align:left;padding:0 8px 7px 0;font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:${FAINT};">Symbol</th>
+            <th style="${th}">Price</th>
+            <th style="${th}">Chg</th>
+            <th style="${th}">RSI</th>
+            <th style="${th}">Score</th>
+            <th style="${th}"></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`,
+  });
+}
+
+function skippedSection(result: DigestResult): string {
+  if (result.skipped.length === 0) return "";
+  return section({
+    theme: "skipped",
+    label: "Not scored · data gaps",
+    body: `<div style="font-size:12px;color:${MUTED};line-height:1.6;">${result.skipped
+      .map((s) => `${s.symbol} (${escapeHtml(s.reason)})`)
+      .join(" &nbsp;·&nbsp; ")}</div>`,
+  });
 }
 
 function renderText(result: DigestResult): string {

@@ -3,9 +3,9 @@ import type { NewsItem } from "@/lib/providers/types";
 import type { NewsHighlight } from "./types";
 
 const MAX_HIGHLIGHTS = 6;
-const MAX_STANDOUT_FEEDS = 6;
+const MAX_STANDOUT_FEEDS = 7;
 const FRESH_WINDOW_SEC = 48 * 3600;
-const MAX_PER_SOURCE = 2;
+const MAX_PER_SOURCE = 3;
 const SUMMARY_MAX_CHARS = 240;
 
 // Headlines that tend to actually move a stock or matter to a holder, vs.
@@ -136,15 +136,17 @@ export async function fetchNewsHighlights(
   const perSource = new Map<string, number>();
   const highlights: NewsHighlight[] = [];
 
-  for (const { item, category, score } of ranked) {
-    if (score <= 0) continue;
-
+  const take = (
+    item: NewsItem,
+    category: string,
+    perSourceCap: number
+  ): boolean => {
     const key = item.headline.trim().toLowerCase().replace(/\s+/g, " ");
-    if (seenHeadlines.has(key)) continue;
+    if (seenHeadlines.has(key)) return false;
 
     const source = item.source || "Unknown";
     const used = perSource.get(source) ?? 0;
-    if (used >= MAX_PER_SOURCE) continue;
+    if (used >= perSourceCap) return false;
 
     seenHeadlines.add(key);
     perSource.set(source, used + 1);
@@ -156,8 +158,25 @@ export async function fetchNewsHighlights(
       summary: truncate(item.summary, SUMMARY_MAX_CHARS),
       category,
     });
+    return true;
+  };
 
+  // First pass: only articles that clear the keyword/recency bar, capped
+  // per source so one wire service can't take over the section.
+  for (const { item, category, score } of ranked) {
+    if (score <= 0) continue;
+    take(item, category, MAX_PER_SOURCE);
     if (highlights.length >= MAX_HIGHLIGHTS) break;
+  }
+
+  // Top-up pass: if the bar left us short of a full section, backfill with
+  // the next-freshest headlines (score gate dropped, per-source cap loosened)
+  // so the list reliably lands at MAX_HIGHLIGHTS when the volume exists.
+  if (highlights.length < MAX_HIGHLIGHTS) {
+    for (const { item, category } of ranked) {
+      take(item, category, MAX_PER_SOURCE + 2);
+      if (highlights.length >= MAX_HIGHLIGHTS) break;
+    }
   }
 
   return highlights;

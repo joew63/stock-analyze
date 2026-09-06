@@ -127,6 +127,77 @@ export async function getCompanyNews(
   });
 }
 
+export async function getMarketNews(category = "general"): Promise<NewsItem[]> {
+  return cached(`finnhub:marketNews:${category}`, TTL.NEWS, async () => {
+    const raw = await finnhubGet<RawNews[]>("/news", { category });
+    return raw
+      .filter((n) => n.headline && n.url)
+      .sort((a, b) => b.datetime - a.datetime)
+      .slice(0, 50)
+      .map((n) => ({
+        id: n.id,
+        headline: n.headline,
+        summary: n.summary,
+        source: n.source,
+        url: n.url,
+        image: n.image || null,
+        datetime: n.datetime,
+      }));
+  });
+}
+
+interface RawEarningsCalendar {
+  earningsCalendar?: {
+    date: string;
+    epsActual: number | null;
+    epsEstimate: number | null;
+    hour: string;
+    quarter: number;
+    revenueActual: number | null;
+    revenueEstimate: number | null;
+    symbol: string;
+    year: number;
+  }[];
+}
+
+export interface EarningsCalendarItem {
+  symbol: string;
+  date: string;
+  hour: string; // "bmo" | "amc" | "dmh" | ""
+  epsEstimate: number | null;
+  revenueEstimate: number | null;
+  quarter: number;
+  year: number;
+}
+
+// Finnhub's forward earnings calendar. Called once per digest run with a
+// date range (no symbol) and filtered to the watchlist downstream, so it's
+// one request regardless of watchlist size.
+export async function getEarningsCalendar(
+  fromISO: string,
+  toISO: string
+): Promise<EarningsCalendarItem[]> {
+  return cached(
+    `finnhub:earningsCalendar:${fromISO}:${toISO}`,
+    TTL.EARNINGS,
+    async () => {
+      const raw = await finnhubGet<RawEarningsCalendar>("/calendar/earnings", {
+        from: fromISO,
+        to: toISO,
+      });
+      return (raw.earningsCalendar ?? []).map((e) => ({
+        symbol: e.symbol,
+        date: e.date,
+        hour: e.hour ?? "",
+        epsEstimate: e.epsEstimate,
+        revenueEstimate: e.revenueEstimate,
+        quarter: e.quarter,
+        year: e.year,
+      }));
+    }
+  );
+}
+
 interface RawEarnings {
   actual: number | null;
   estimate: number | null;

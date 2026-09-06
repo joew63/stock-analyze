@@ -6,6 +6,8 @@ import { fetchSignalData } from "./fetchSignalData";
 import { buildThesis, buildCaution, summarizeBusiness } from "./thesis";
 import { DEFAULT_WATCHLIST } from "./watchlist";
 import { fetchMarketBriefing, computeMarketSentiment } from "./market";
+import { fetchUpcomingEvents } from "./events";
+import { fetchNewsHighlights } from "./news";
 import type { DigestRow, DigestResult, DigestSkip } from "./types";
 
 const RSI_PERIOD = 14;
@@ -134,9 +136,10 @@ async function scanSymbol(symbol: string): Promise<ScanOutcome> {
 export async function runDailyScan(
   watchlist: string[] = DEFAULT_WATCHLIST
 ): Promise<DigestResult> {
-  const [outcomes, marketBriefing] = await Promise.all([
+  const [outcomes, marketBriefing, upcomingEventsRaw] = await Promise.all([
     mapWithConcurrency(watchlist, CONCURRENCY, scanSymbol),
     fetchMarketBriefing(),
+    fetchUpcomingEvents(watchlist),
   ]);
 
   const rows = outcomes
@@ -149,11 +152,24 @@ export async function runDailyScan(
   const standouts = rows.slice(0, MAX_STANDOUTS);
   const marketSentiment = computeMarketSentiment(rows, marketBriefing.benchmarks);
 
+  // Backfill company names onto the calendar events from the profile data
+  // the scan already fetched (the calendar endpoint only returns tickers).
+  const nameBySymbol = new Map(rows.map((r) => [r.symbol, r.name]));
+  const upcomingEvents = upcomingEventsRaw.map((e) => ({
+    ...e,
+    name: nameBySymbol.get(e.symbol) ?? e.name,
+  }));
+
+  // News depends on which symbols became standouts, so it runs after ranking.
+  const newsHighlights = await fetchNewsHighlights(standouts.map((s) => s.symbol));
+
   return {
     scannedAt: new Date().toISOString(),
     watchlistSize: watchlist.length,
     marketBriefing,
     marketSentiment,
+    upcomingEvents,
+    newsHighlights,
     standouts,
     rows,
     skipped,

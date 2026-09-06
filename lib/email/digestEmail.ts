@@ -1,4 +1,10 @@
-import type { DigestResult, DigestRow, MarketSentiment } from "@/lib/digest/types";
+import type {
+  DigestResult,
+  DigestRow,
+  MarketSentiment,
+  NewsHighlight,
+  UpcomingEvent,
+} from "@/lib/digest/types";
 
 function fmtCurrency(n: number): string {
   return `$${n.toFixed(2)}`;
@@ -10,6 +16,35 @@ function fmtPct(n: number): string {
 
 function todayLabel(iso: string): string {
   return iso.slice(0, 10);
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// "in 2 days (Tue, Sep 9)" style label for a calendar event.
+function eventTiming(e: UpcomingEvent): string {
+  const dow = new Date(`${e.date}T00:00:00Z`).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+  const rel =
+    e.daysUntil <= 0 ? "today" : e.daysUntil === 1 ? "tomorrow" : `in ${e.daysUntil} days`;
+  return `${rel} (${dow})`;
+}
+
+// Rough "3h ago" / "2d ago" from a unix-seconds timestamp.
+function relativeTime(unixSec: number): string {
+  const diffSec = Math.max(0, Math.floor(Date.now() / 1000) - unixSec);
+  if (diffSec < 3600) return `${Math.max(1, Math.round(diffSec / 60))}m ago`;
+  if (diffSec < 86_400) return `${Math.round(diffSec / 3600)}h ago`;
+  return `${Math.round(diffSec / 86_400)}d ago`;
 }
 
 function sentimentColor(label: MarketSentiment["label"]): string {
@@ -39,9 +74,19 @@ export interface RenderedDigestEmail {
 export function renderDigestEmail(result: DigestResult): RenderedDigestEmail {
   const date = todayLabel(result.scannedAt);
   const lead = result.standouts[0];
-  const subject = lead
+  const baseSubject = lead
     ? `Stock digest ${date}: ${result.marketSentiment.label} sentiment, ${lead.symbol} leads`
     : `Stock digest ${date}: ${result.marketSentiment.label} sentiment`;
+
+  // Surface an imminent earnings date right in the subject — that's the
+  // part of "important news coming up" you'd want to see without opening.
+  const imminent = result.upcomingEvents.filter((e) => e.daysUntil <= 1);
+  const subject =
+    imminent.length > 0
+      ? `${baseSubject} · ${imminent.map((e) => e.symbol).join(", ")} earns ${
+          imminent.every((e) => e.daysUntil === 0) ? "today" : "soon"
+        }`
+      : baseSubject;
 
   const html = renderHtml(result, date);
   const text = renderText(result, date);
@@ -183,6 +228,73 @@ function renderHtml(result: DigestResult, date: string): string {
          </div>`
       : "";
 
+  const eventRows = result.upcomingEvents
+    .map((e) => {
+      const imminent = e.daysUntil <= 1;
+      return `<tr style="border-bottom:1px solid #f0f0f0;">
+        <td style="padding:6px 10px 6px 0;font-size:13px;color:#171717;font-weight:600;">${
+          imminent ? "⚠ " : ""
+        }${e.symbol}</td>
+        <td style="padding:6px 10px 6px 0;font-size:13px;color:#525252;">${escapeHtml(e.name)}</td>
+        <td style="padding:6px 10px 6px 0;font-size:13px;color:${
+          imminent ? "#b45309" : "#171717"
+        };">${eventTiming(e)}${e.when ? `, ${e.when}` : ""}</td>
+        <td style="padding:6px 0;font-size:13px;color:#737373;">${
+          typeof e.epsEstimate === "number" && Number.isFinite(e.epsEstimate)
+            ? `est. EPS $${e.epsEstimate.toFixed(2)}`
+            : ""
+        }</td>
+      </tr>`;
+    })
+    .join("");
+
+  const eventsSection = `
+  <div style="${sectionTitleStyle}">Upcoming events (next 14 days)</div>
+  ${
+    result.upcomingEvents.length > 0
+      ? `<table style="border-collapse:collapse;width:100%;">
+          <tbody>${eventRows}</tbody>
+        </table>
+        <div style="font-size:12px;color:#737373;line-height:1.5;margin-top:6px;">
+          ${result.upcomingEvents.length} watchlist ${
+            result.upcomingEvents.length === 1 ? "company reports" : "companies report"
+          } earnings in this window. Earnings dates from Finnhub's calendar and can shift.
+        </div>`
+      : `<div style="font-size:13px;color:#525252;">No watchlist earnings scheduled in the next 14 days.</div>`
+  }`;
+
+  const newsCards = result.newsHighlights
+    .map(
+      (n: NewsHighlight) => `
+      <div style="border:1px solid #e5e5e5;border-radius:12px;padding:14px;margin-bottom:10px;">
+        <a href="${escapeHtml(n.url)}" style="font-size:14px;font-weight:600;color:#1d4ed8;text-decoration:none;line-height:1.4;">
+          ${escapeHtml(n.headline)}
+        </a>
+        <div style="margin:4px 0 ${n.summary ? "8px" : "0"} 0;font-size:11px;color:#a3a3a3;">
+          <span style="background:#f5f5f5;color:#525252;border-radius:4px;padding:1px 6px;">${escapeHtml(
+            n.category
+          )}</span>
+          &nbsp;${escapeHtml(n.source)} &nbsp;·&nbsp; ${relativeTime(n.datetime)}
+        </div>
+        ${
+          n.summary
+            ? `<div style="font-size:13px;color:#404040;line-height:1.5;">${escapeHtml(
+                n.summary
+              )}</div>`
+            : ""
+        }
+      </div>`
+    )
+    .join("");
+
+  const newsSection = `
+  <div style="${sectionTitleStyle}">Interesting reads</div>
+  ${
+    result.newsHighlights.length > 0
+      ? newsCards
+      : `<div style="font-size:13px;color:#525252;">No notable headlines surfaced today.</div>`
+  }`;
+
   return `
 <div style="max-width:640px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#ffffff;color:#171717;padding:20px;">
   <h1 style="font-size:18px;margin:0 0 4px 0;">Daily stock digest — ${date}</h1>
@@ -193,10 +305,14 @@ function renderHtml(result: DigestResult, date: string): string {
     watching" are composed from the company profile and grade sub-metrics already in the scan —
     not third-party commentary. Target/stop are a statistical 30-day ±1σ band from historical
     volatility. Market sentiment is a deterministic breadth/RSI/benchmark gauge, not a third-party
-    index.
+    index. "Upcoming events" lists watchlist earnings dates from Finnhub's calendar; "Interesting
+    reads" are third-party headlines ranked by recency and keyword signal — the only part of this
+    email that isn't self-computed.
   </p>
   ${marketSection}
+  ${eventsSection}
   ${standoutSection}
+  ${newsSection}
   ${fullListSection}
   ${skippedList}
 </div>`;
@@ -214,6 +330,17 @@ function renderText(result: DigestResult, date: string): string {
 
   lines.push(`MARKET SENTIMENT: ${result.marketSentiment.label}`);
   lines.push(`  ${result.marketSentiment.summary}`);
+  lines.push("");
+
+  lines.push("UPCOMING EVENTS (next 14 days)");
+  if (result.upcomingEvents.length === 0) {
+    lines.push("  No watchlist earnings scheduled in the next 14 days.");
+  } else {
+    for (const e of result.upcomingEvents) {
+      lines.push(`  ${e.daysUntil <= 1 ? "! " : "  "}${e.note}`);
+    }
+    lines.push("  (Earnings dates from Finnhub's calendar and can shift.)");
+  }
   lines.push("");
 
   lines.push("STANDOUTS");
@@ -248,6 +375,20 @@ function renderText(result: DigestResult, date: string): string {
     }
   }
 
+  lines.push("INTERESTING READS");
+  if (result.newsHighlights.length === 0) {
+    lines.push("  No notable headlines surfaced today.");
+  } else {
+    for (const n of result.newsHighlights) {
+      lines.push(`- ${n.headline}`);
+      lines.push(`  ${n.category} · ${n.source} · ${relativeTime(n.datetime)}`);
+      if (n.summary) lines.push(`  ${n.summary}`);
+      lines.push(`  ${n.url}`);
+      lines.push("");
+    }
+  }
+  lines.push("");
+
   const standoutSymbols = new Set(result.standouts.map((r) => r.symbol));
   lines.push(`FULL WATCHLIST (${result.rows.length})`);
   for (const r of result.rows) {
@@ -270,7 +411,7 @@ function renderText(result: DigestResult, date: string): string {
   }
 
   lines.push(
-    "Target/stop are a statistical 30-day +/-1 std-dev band from historical volatility, not a guarantee. Market sentiment is a deterministic breadth/RSI/benchmark gauge, not a third-party index. NFA."
+    "Target/stop are a statistical 30-day +/-1 std-dev band from historical volatility, not a guarantee. Market sentiment is a deterministic breadth/RSI/benchmark gauge, not a third-party index. Upcoming events are watchlist earnings dates from Finnhub's calendar (can shift). Interesting reads are third-party headlines, ranked by recency/keywords, not endorsements. NFA."
   );
 
   return lines.join("\n");

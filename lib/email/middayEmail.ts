@@ -15,20 +15,6 @@ import {
   section,
 } from "./emailTheme";
 
-// "2026-09-05 13:45 ET" — the time matters for an intraday update in a way
-// it doesn't for the daily digest, so spell it out in US market time.
-function stampLabel(iso: string): string {
-  const d = new Date(iso);
-  const date = d.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
-  const time = d.toLocaleTimeString("en-US", {
-    timeZone: "America/New_York",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-  return `${date} ${time} ET`;
-}
-
 function pulseColor(label: MiddayPulse["label"]): string {
   if (label === "Bullish") return UP;
   if (label === "Bearish") return DOWN;
@@ -42,11 +28,7 @@ export interface RenderedMiddayEmail {
 }
 
 export function renderMiddayEmail(result: MiddayResult): RenderedMiddayEmail {
-  const stamp = stampLabel(result.scannedAt);
-  const benchAvg = result.pulse.benchmarkAvgChange;
-  const subject =
-    `Midday market update ${stamp}: ${result.pulse.label} pulse, ` +
-    `benchmarks ${benchAvg >= 0 ? "+" : ""}${benchAvg.toFixed(2)}%`;
+  const subject = `☀️ afternoon - ${result.pulse.label} sentiment`;
 
   return {
     subject,

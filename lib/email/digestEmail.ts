@@ -24,10 +24,6 @@ import {
   SECTION,
 } from "./emailTheme";
 
-function todayLabel(iso: string): string {
-  return iso.slice(0, 10);
-}
-
 // "in 2 days (Tue, Sep 9)" style label for a calendar event.
 function eventTiming(e: UpcomingEvent): string {
   const dow = new Date(`${e.date}T00:00:00Z`).toLocaleDateString("en-US", {
@@ -75,22 +71,7 @@ export interface RenderedDigestEmail {
 }
 
 export function renderDigestEmail(result: DigestResult): RenderedDigestEmail {
-  const date = todayLabel(result.scannedAt);
-  const lead = result.standouts[0];
-  const baseSubject = lead
-    ? `Stock digest ${date}: ${result.marketSentiment.label} sentiment, ${lead.symbol} leads`
-    : `Stock digest ${date}: ${result.marketSentiment.label} sentiment`;
-
-  // Surface an imminent earnings date right in the subject — that's the
-  // part of "important news coming up" you'd want to see without opening.
-  const imminent = result.upcomingEvents.filter((e) => e.daysUntil <= 1);
-  const subject =
-    imminent.length > 0
-      ? `${baseSubject} · ${imminent.map((e) => e.symbol).join(", ")} earns ${
-          imminent.every((e) => e.daysUntil === 0) ? "today" : "soon"
-        }`
-      : baseSubject;
-
+  const subject = `🌅 morning - ${result.marketSentiment.label} sentiment`;
   const html = renderHtml(result);
   const text = renderText(result);
 

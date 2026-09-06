@@ -88,3 +88,37 @@ export interface DigestResult {
   rows: DigestRow[];
   skipped: DigestSkip[];
 }
+
+// --- Midday market update ---------------------------------------------------
+// A lighter intraday run: live quotes only, no FMP fundamentals/history, so
+// no RSI, projections, targets, or scores (those all come from daily EOD
+// data that doesn't move through the trading day). See lib/digest/midday.ts.
+
+export interface MiddayQuote {
+  symbol: string;
+  name: string;
+  price: number;
+  changePercent: number;
+}
+
+export interface MiddayPulse {
+  label: "Bullish" | "Neutral" | "Bearish";
+  score: number;
+  breadthPct: number;
+  upCount: number;
+  downCount: number;
+  benchmarkAvgChange: number;
+  summary: string;
+}
+
+export interface MiddayResult {
+  scannedAt: string;
+  watchlistSize: number;
+  quotedCount: number;
+  marketBriefing: MarketBriefing;
+  pulse: MiddayPulse;
+  gainers: MiddayQuote[];
+  losers: MiddayQuote[];
+  quotes: MiddayQuote[];
+  skipped: DigestSkip[];
+}

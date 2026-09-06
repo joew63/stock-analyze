@@ -93,6 +93,24 @@ See `lib/digest/*` and `app/api/digest/route.ts`.
   email as JSON without calling SES — use this to tune the watchlist or
   thresholds before trusting it to actually send.
 
+### Midday market update
+
+`GET /api/digest?mode=midday` (same `x-digest-secret` header, `&dryRun=true`
+to preview) sends a lighter intraday email: benchmark moves, an intraday
+**pulse** (Bullish/Neutral/Bearish from watchlist breadth + benchmark move —
+no RSI term, since RSI intraday is just yesterday's close restated), and the
+day's top gainers/losers across the watchlist. It only pulls live Finnhub
+quotes — no FMP fundamentals or history — so there are deliberately **no
+RSI, scores, targets, or stop-losses**; those come from end-of-day data that
+doesn't move through the session, and the morning digest is where they live.
+See `lib/digest/midday.ts` and `lib/email/middayEmail.ts`.
+
+To actually send it midday, add a **second** EventBridge schedule (step 7
+below) pointing at the same API destination with the URL
+`.../api/digest?mode=midday` and a cron like
+`cron(0 12 ? * MON-FRI *)` / `America/New_York`. No new env vars, SSM
+parameters, or IAM changes — it reuses the daily digest's entire setup.
+
 ### One-time AWS + Gmail setup
 
 This app has no persistent server, so the digest needs its own trigger, and

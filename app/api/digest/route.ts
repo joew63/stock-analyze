@@ -1,7 +1,9 @@
 import { timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { runDailyScan } from "@/lib/digest/scan";
+import { runMiddayScan } from "@/lib/digest/midday";
 import { renderDigestEmail } from "@/lib/email/digestEmail";
+import { renderMiddayEmail } from "@/lib/email/middayEmail";
 import { sendDigestEmail } from "@/lib/email/gmail";
 import { getSsmParameter } from "@/lib/ssm";
 
@@ -27,17 +29,42 @@ export async function GET(req: NextRequest) {
   }
 
   const dryRun = req.nextUrl.searchParams.get("dryRun") === "true";
+  // ?mode=midday runs the lighter intraday update (live quotes only, no
+  // fundamentals/RSI). Anything else — including no param — is the full
+  // daily digest, so the existing morning schedule keeps working untouched.
+  const mode = req.nextUrl.searchParams.get("mode") === "midday" ? "midday" : "daily";
 
   try {
+    if (mode === "midday") {
+      const result = await runMiddayScan();
+      const email = renderMiddayEmail(result);
+
+      if (dryRun) {
+        return NextResponse.json({ mode, dryRun: true, result, email });
+      }
+
+      await sendDigestEmail(email);
+      return NextResponse.json({
+        mode,
+        dryRun: false,
+        sent: true,
+        scannedAt: result.scannedAt,
+        watchlistSize: result.watchlistSize,
+        quotedCount: result.quotedCount,
+        pulse: result.pulse.label,
+      });
+    }
+
     const result = await runDailyScan();
     const email = renderDigestEmail(result);
 
     if (dryRun) {
-      return NextResponse.json({ dryRun: true, result, email });
+      return NextResponse.json({ mode, dryRun: true, result, email });
     }
 
     await sendDigestEmail(email);
     return NextResponse.json({
+      mode,
       dryRun: false,
       sent: true,
       scannedAt: result.scannedAt,

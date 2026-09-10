@@ -8,12 +8,6 @@ on:
     # Eastern actually send. Weekdays only (trading days).
     - cron: "0 11 * * 1-5"
     - cron: "0 12 * * 1-5"
-  workflow_dispatch:
-    inputs:
-      dry_run:
-        description: "Render the digest but do not send it"
-        type: boolean
-        default: false
 
 concurrency:
   group: morning-digest
@@ -36,7 +30,4 @@ jobs:
           DIGEST_GMAIL_USER: ${{ secrets.DIGEST_GMAIL_USER }}
           DIGEST_GMAIL_APP_PASSWORD: ${{ secrets.DIGEST_GMAIL_APP_PASSWORD }}
           DIGEST_RECIPIENT_EMAIL: ${{ secrets.DIGEST_RECIPIENT_EMAIL }}
-        run: >
-          npx tsx scripts/run-digest.ts
-          ${{ github.event_name == 'schedule' && '--expect-hour=7' || '' }}
-          ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '--dry-run' || '' }}
+        run: npx tsx scripts/run-digest.ts --expect-hour=7

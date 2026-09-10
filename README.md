@@ -146,8 +146,9 @@ weekdays only.
 2. **Settings → Secrets and variables → Actions → New repository secret** —
    add all five variables from the table above.
 3. That's it. The workflows are enabled as soon as they're on the default
-   branch. Use **Actions → Morning digest → Run workflow** (with the *dry run*
-   box checked) to test the wiring without sending mail.
+   branch. They run on their cron only — there's no manual trigger. To test
+   the wiring, run a local dry run (see "Local runs" above), or temporarily
+   add a `workflow_dispatch:` trigger back to the workflow.
 
 **On the schedule times**: GitHub cron is UTC with no daylight-saving
 handling, so each workflow lists *two* cron entries — the UTC time for EDT and

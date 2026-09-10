@@ -1,10 +1,5 @@
 import { cached, TTL } from "@/lib/cache";
-import type {
-  EarningsSurprise,
-  NewsItem,
-  Quote,
-  RecommendationTrendPoint,
-} from "./types";
+import type { EarningsSurprise, NewsItem, Quote } from "./types";
 
 const BASE_URL = "https://finnhub.io/api/v1";
 
@@ -55,36 +50,6 @@ export async function getQuote(symbol: string): Promise<Quote> {
       previousClose: raw.pc,
       timestamp: raw.t,
     };
-  });
-}
-
-interface RawRecommendation {
-  symbol: string;
-  period: string;
-  strongBuy: number;
-  buy: number;
-  hold: number;
-  sell: number;
-  strongSell: number;
-}
-
-export async function getRecommendationTrend(
-  symbol: string
-): Promise<RecommendationTrendPoint[]> {
-  return cached(`finnhub:recommendation:${symbol}`, TTL.RECOMMENDATION, async () => {
-    const raw = await finnhubGet<RawRecommendation[]>("/stock/recommendation", {
-      symbol,
-    });
-    return raw
-      .map((r) => ({
-        period: r.period,
-        strongBuy: r.strongBuy,
-        buy: r.buy,
-        hold: r.hold,
-        sell: r.sell,
-        strongSell: r.strongSell,
-      }))
-      .sort((a, b) => (a.period < b.period ? 1 : -1));
   });
 }
 

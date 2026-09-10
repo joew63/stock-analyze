@@ -72,15 +72,6 @@ export interface HistoricalPricePoint {
   volume: number;
 }
 
-export interface RecommendationTrendPoint {
-  period: string;
-  strongBuy: number;
-  buy: number;
-  hold: number;
-  sell: number;
-  strongSell: number;
-}
-
 export interface NewsItem {
   id: number | string;
   headline: string;
@@ -104,10 +95,7 @@ export interface StockDataBundle {
   profile: CompanyProfile | null;
   ratios: FundamentalRatios | null;
   incomeHistory: IncomeStatementPoint[] | null;
-  incomeHistoryQuarterly: IncomeStatementPoint[] | null;
   priceHistory: HistoricalPricePoint[] | null;
-  recommendationTrend: RecommendationTrendPoint[] | null;
-  news: NewsItem[] | null;
   earningsSurprises: EarningsSurprise[] | null;
   errors: string[];
 }

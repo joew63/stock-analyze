@@ -30,5 +30,4 @@ export const TTL = {
   HISTORY: 24 * 60 * 60_000,
   NEWS: 15 * 60_000,
   EARNINGS: 24 * 60 * 60_000,
-  RECOMMENDATION: 24 * 60 * 60_000,
 } as const;

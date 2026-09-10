@@ -1,6 +1,6 @@
 import { gradeStock, type StockGrades } from "@/lib/grading";
-import { computeRSI } from "@/lib/backtest/indicators";
-import { computeProjection } from "@/lib/projections/trend";
+import { computeRSI } from "@/lib/indicators";
+import { computeProjection } from "@/lib/projection";
 import { fiftyTwoWeekRange } from "@/lib/priceStats";
 import { byDateAsc, clamp, mapWithConcurrency } from "@/lib/util";
 import { fetchSignalData } from "./fetchSignalData";

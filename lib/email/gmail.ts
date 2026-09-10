@@ -1,5 +1,4 @@
 import nodemailer from "nodemailer";
-import { getSsmParameter } from "@/lib/ssm";
 
 function requiredEnv(name: string): string {
   const value = process.env[name];
@@ -8,14 +7,11 @@ function requiredEnv(name: string): string {
 }
 
 // The App Password is a real secret (unlike the sender/recipient
-// addresses), so it's kept out of the build-time env entirely and fetched
-// at request time from SSM Parameter Store via the Lambda's own IAM role —
-// no access keys, same "no static credentials" approach the old SES setup
-// used. See README for how to create the parameter and grant read access.
-async function getAppPassword(): Promise<string> {
-  const name = requiredEnv("DIGEST_GMAIL_APP_PASSWORD_PARAM");
-  const region = process.env.DIGEST_AWS_REGION || "us-east-1";
-  return getSsmParameter(name, region);
+// addresses). It's injected from the GitHub Actions secret store into the
+// job's env at run time and never written to disk. See README for how to
+// create the App Password and register it as a repo secret.
+function getAppPassword(): string {
+  return requiredEnv("DIGEST_GMAIL_APP_PASSWORD");
 }
 
 // Sends through Gmail's own SMTP servers (as the account owner) rather than
@@ -29,7 +25,7 @@ export async function sendDigestEmail(params: {
 }): Promise<void> {
   const user = requiredEnv("DIGEST_GMAIL_USER");
   const recipient = requiredEnv("DIGEST_RECIPIENT_EMAIL");
-  const pass = await getAppPassword();
+  const pass = getAppPassword();
 
   const transport = nodemailer.createTransport({
     host: "smtp.gmail.com",

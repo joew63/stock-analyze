@@ -3,30 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint",
     "digest": "tsx scripts/run-digest.ts",
     "digest:midday": "tsx scripts/run-digest.ts --midday"
   },
   "dependencies": {
-    "next": "16.3.0",
-    "next-themes": "^0.4.6",
-    "nodemailer": "^9.0.5",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
-    "recharts": "^3.10.1"
+    "nodemailer": "^9.0.5"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/nodemailer": "^8.0.1",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.3.0",
-    "tailwindcss": "^4",
     "tsx": "^4.20.6",
     "typescript": "^5"
   }

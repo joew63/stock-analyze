@@ -1,4 +1,4 @@
-# Stock Analyzer
+# Stock Digest Mailer
 
 A personal, single-user tool that emails you a daily stock digest: it scans a
 curated watchlist once every trading morning and always sends. There's no

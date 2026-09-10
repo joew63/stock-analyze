@@ -35,14 +35,14 @@ export function escapeHtml(s: string): string {
 }
 
 // Neutral ramp + gain/loss colors, shared so the two emails stay in sync.
-export const INK = "#18181b";
-export const BODY = "#3f3f46";
-export const MUTED = "#71717a";
-export const FAINT = "#a1a1aa";
-export const HAIRLINE = "#e8e8ea";
-export const UP = "#059669";
-export const DOWN = "#dc2626";
-export const FLAT = "#52525b";
+export const INK = "#1f2328";
+export const BODY = "#464c54";
+export const MUTED = "#6b727b";
+export const FAINT = "#949aa2";
+export const HAIRLINE = "#e4e7eb";
+export const UP = "#1f7a54";
+export const DOWN = "#c0392b";
+export const FLAT = "#57606a";
 
 export function changeColor(n: number): string {
   if (n > 0) return UP;
@@ -52,28 +52,30 @@ export function changeColor(n: number): string {
 
 export interface SectionTheme {
   accent: string;
-  tint: string;
 }
 
-// One entry per section across both emails. Accent is the label/rule color;
-// tint is a barely-there wash of the same hue — kept close to white so the
-// email doesn't read as a stack of colored boxes.
+// One accent color for every section label and link — a plain link blue.
+// Gain/loss color still shows up, but only on the numbers (changeColor).
+export const ACCENT = "#1a56db";
+
+const oneAccent: SectionTheme = { accent: ACCENT };
+
 export const SECTION = {
-  briefing: { accent: "#2563eb", tint: "#f7f9fe" },
-  sentiment: { accent: "#0d9488", tint: "#f5faf9" },
-  events: { accent: "#d97706", tint: "#fdfaf4" },
-  standouts: { accent: "#4f46e5", tint: "#f8f8fd" },
-  reads: { accent: "#64748b", tint: "#f9fafb" },
-  watchlist: { accent: "#52525b", tint: "#fafafa" },
-  gainers: { accent: "#059669", tint: "#f5fbf8" },
-  losers: { accent: "#dc2626", tint: "#fdf7f7" },
-  skipped: { accent: "#a1a1aa", tint: "#fafafa" },
-} as const satisfies Record<string, SectionTheme>;
+  briefing: oneAccent,
+  sentiment: oneAccent,
+  events: oneAccent,
+  standouts: oneAccent,
+  reads: oneAccent,
+  watchlist: oneAccent,
+  gainers: oneAccent,
+  losers: oneAccent,
+  skipped: oneAccent,
+} satisfies Record<string, SectionTheme>;
 
 export type SectionKey = keyof typeof SECTION;
 
-// A washed section block: accent left rule, label in the accent color,
-// caller's body HTML, and an optional small footnote.
+// Flat section: a thin rule, an accent label, the caller's body, and an
+// optional small footnote. No box, no background wash, no left bar.
 export function section(opts: {
   theme: SectionKey | SectionTheme;
   label: string;
@@ -85,13 +87,11 @@ export function section(opts: {
     ? `<div style="margin-top:12px;font-size:11px;color:${FAINT};line-height:1.55;">${opts.note}</div>`
     : "";
   return `
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;margin:12px 0;">
-    <tr><td style="background:${t.tint};border-left:2px solid ${t.accent};border-radius:2px 10px 10px 2px;padding:16px 18px;">
-      <div style="font-size:14px;font-weight:700;color:${t.accent};margin-bottom:12px;">${opts.label}</div>
-      ${opts.body}
-      ${note}
-    </td></tr>
-  </table>`;
+  <div style="margin-top:24px;padding-top:16px;border-top:1px solid ${HAIRLINE};">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:${t.accent};margin-bottom:12px;">${opts.label}</div>
+    ${opts.body}
+    ${note}
+  </div>`;
 }
 
 // Outer shell: full document (so the font <link> has somewhere to live),
@@ -104,9 +104,9 @@ export function page(inner: string): string {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 ${FONT_LINK}
 </head>
-<body style="margin:0;padding:0;background:#f4f4f5;font-family:${FONT};">
+<body style="margin:0;padding:0;background:#f2f3f5;font-family:${FONT};">
   <div style="max-width:640px;margin:0 auto;padding:24px 12px 36px;">
-    <div style="background:#ffffff;border:1px solid ${HAIRLINE};border-radius:16px;padding:28px 22px;font-family:${FONT};color:${INK};font-size:14px;line-height:1.5;">
+    <div style="background:#ffffff;border:1px solid ${HAIRLINE};border-radius:12px;padding:28px 24px;font-family:${FONT};color:${INK};font-size:14px;line-height:1.5;">
       ${inner}
     </div>
   </div>
@@ -151,11 +151,11 @@ export function readsSection(
         <tr><td style="background:#ffffff;border:1px solid ${HAIRLINE};border-radius:12px;padding:13px 15px;">
           <a href="${escapeHtml(
             n.url
-          )}" style="font-size:14px;font-weight:600;color:#1d4ed8;text-decoration:none;line-height:1.4;">${escapeHtml(
+          )}" style="font-size:14px;font-weight:600;color:${ACCENT};text-decoration:none;line-height:1.4;">${escapeHtml(
             n.headline
           )}</a>
           <div style="margin:5px 0 ${n.summary ? "7px" : "0"};font-size:11px;color:${FAINT};">
-            <span style="background:#eef1f4;color:${MUTED};border-radius:4px;padding:1px 6px;">${escapeHtml(
+            <span style="background:#e9edf1;color:${MUTED};border-radius:4px;padding:1px 6px;">${escapeHtml(
               n.category
             )}</span>
             &nbsp;${escapeHtml(n.source)} &nbsp;·&nbsp; ${relativeTime(n.datetime)}

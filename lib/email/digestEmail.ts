@@ -5,6 +5,7 @@ import type {
   UpcomingEvent,
 } from "@/lib/digest/types";
 import {
+  ACCENT,
   BODY,
   FAINT,
   fmtCurrency,
@@ -53,7 +54,7 @@ function flagFor(row: DigestRow): string {
 function flagChip(row: DigestRow): string {
   const label = flagFor(row);
   if (!label) return "";
-  const [bg, fg] = row.overbought ? ["#fee2e2", "#991b1b"] : ["#fef3c7", "#92400e"];
+  const [bg, fg] = row.overbought ? ["#f6eceb", DOWN] : ["#eef1f4", ACCENT];
   return `<span style="display:inline-block;background:${bg};color:${fg};border-radius:4px;padding:1px 7px;font-size:11px;font-weight:600;">${label}</span>`;
 }
 
@@ -157,8 +158,8 @@ function eventsSection(result: DigestResult): string {
           e.symbol
         }</td>
         <td style="padding:6px 12px 6px 0;font-size:13px;color:${MUTED};">${escapeHtml(e.name)}</td>
-        <td style="padding:6px 12px 6px 0;font-size:13px;color:${
-          imminent ? "#b45309" : INK
+        <td style="padding:6px 12px 6px 0;font-size:13px;color:${INK};font-weight:${
+          imminent ? "700" : "400"
         };white-space:nowrap;">${eventTiming(e)}${e.when ? `, ${e.when}` : ""}</td>
         <td style="padding:6px 0;font-size:12px;color:${FAINT};white-space:nowrap;">${est}</td>
       </tr>`;
@@ -187,9 +188,9 @@ function standoutsSection(result: DigestResult): string {
   const accent = SECTION.standouts.accent;
   const cards = result.standouts
     .map((c) => {
-      const borderColor = c.allFactorsStrong ? "#e0b528" : HAIRLINE;
+      const borderColor = c.allFactorsStrong ? ACCENT : HAIRLINE;
       const badge = c.allFactorsStrong
-        ? `<span style="display:inline-block;margin-left:8px;background:#d97706;color:#ffffff;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700;letter-spacing:.03em;vertical-align:middle;">★ STRONG</span>`
+        ? `<span style="display:inline-block;margin-left:8px;background:${ACCENT};color:#ffffff;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700;letter-spacing:.03em;vertical-align:middle;">★ STRONG</span>`
         : "";
       const score = Math.max(0, Math.min(100, c.score));
       const business = c.businessSummary
@@ -212,20 +213,20 @@ function standoutsSection(result: DigestResult): string {
             &nbsp;·&nbsp; score ${c.score.toFixed(0)}
             ${flagChip(c) ? `&nbsp; ${flagChip(c)}` : ""}
           </div>
-          <div style="height:4px;background:#ececf5;border-radius:999px;overflow:hidden;margin-bottom:10px;">
+          <div style="height:4px;background:#e7ebef;border-radius:999px;overflow:hidden;margin-bottom:10px;">
             <div style="height:4px;width:${score.toFixed(0)}%;background:${accent};"></div>
           </div>
           <div style="font-size:13px;color:${BODY};line-height:1.55;margin-bottom:8px;">${escapeHtml(
             c.thesis
           )}</div>
           ${business}
-          <div style="font-size:13px;color:#7c2d12;line-height:1.55;margin-bottom:12px;"><span style="font-weight:600;">Worth watching:</span> ${escapeHtml(
+          <div style="font-size:13px;color:${BODY};line-height:1.55;margin-bottom:12px;"><span style="font-weight:600;color:${INK};">Worth watching:</span> ${escapeHtml(
             c.caution
           )}</div>
           <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:separate;">
             <tr>
               <td style="padding-right:8px;">
-                <div style="background:#ecfdf3;border-radius:8px;padding:7px 12px;">
+                <div style="background:#edf4ef;border-radius:8px;padding:7px 12px;">
                   <div style="font-size:10px;color:${MUTED};text-transform:uppercase;letter-spacing:.05em;">Target · ${
                     c.horizonDays
                   }d</div>
@@ -235,7 +236,7 @@ function standoutsSection(result: DigestResult): string {
                 </div>
               </td>
               <td>
-                <div style="background:#fef2f2;border-radius:8px;padding:7px 12px;">
+                <div style="background:#f7edec;border-radius:8px;padding:7px 12px;">
                   <div style="font-size:10px;color:${MUTED};text-transform:uppercase;letter-spacing:.05em;">Stop-loss</div>
                   <div style="font-size:14px;font-weight:700;color:${DOWN};">${fmtCurrency(
                     c.stopLoss
@@ -274,9 +275,9 @@ function watchlistSection(result: DigestResult): string {
     .map((r, i) => {
       const flag = flagFor(r);
       const star = standoutSymbols.has(r.symbol)
-        ? `<span style="color:#d97706;">★</span> `
+        ? `<span style="color:${ACCENT};">★</span> `
         : "";
-      return `<tr style="background:${i % 2 ? "#ffffff" : "#fbfbfc"};">
+      return `<tr style="background:${i % 2 ? "#ffffff" : "#f6f8fa"};">
         <td style="padding:6px 8px 6px 0;font-size:13px;color:${INK};">${star}${r.symbol}</td>
         <td style="padding:6px 0 6px 8px;font-size:13px;color:${INK};text-align:right;">${fmtCurrency(
           r.price

@@ -18,6 +18,13 @@ export const FONT =
 const FONT_LINK =
   '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">';
 
+// What every email renderer returns and `sendDigestEmail` consumes.
+export interface RenderedEmail {
+  subject: string;
+  html: string;
+  text: string;
+}
+
 export function fmtCurrency(n: number): string {
   return `$${n.toFixed(2)}`;
 }
@@ -50,45 +57,23 @@ export function changeColor(n: number): string {
   return FLAT;
 }
 
-export interface SectionTheme {
-  accent: string;
-}
-
 // One accent color for every section label and link — a plain link blue.
 // Gain/loss color still shows up, but only on the numbers (changeColor).
 export const ACCENT = "#1a56db";
 
-const oneAccent: SectionTheme = { accent: ACCENT };
-
-export const SECTION = {
-  briefing: oneAccent,
-  sentiment: oneAccent,
-  events: oneAccent,
-  standouts: oneAccent,
-  reads: oneAccent,
-  watchlist: oneAccent,
-  gainers: oneAccent,
-  losers: oneAccent,
-  skipped: oneAccent,
-} satisfies Record<string, SectionTheme>;
-
-export type SectionKey = keyof typeof SECTION;
-
 // Flat section: a thin rule, an accent label, the caller's body, and an
 // optional small footnote. No box, no background wash, no left bar.
 export function section(opts: {
-  theme: SectionKey | SectionTheme;
   label: string;
   body: string;
   note?: string;
 }): string {
-  const t = typeof opts.theme === "string" ? SECTION[opts.theme] : opts.theme;
   const note = opts.note
     ? `<div style="margin-top:12px;font-size:11px;color:${FAINT};line-height:1.55;">${opts.note}</div>`
     : "";
   return `
   <div style="margin-top:24px;padding-top:16px;border-top:1px solid ${HAIRLINE};">
-    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:${t.accent};margin-bottom:12px;">${opts.label}</div>
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:${ACCENT};margin-bottom:12px;">${opts.label}</div>
     ${opts.body}
     ${note}
   </div>`;
@@ -138,7 +123,6 @@ export function readsSection(
 ): string {
   if (highlights.length === 0) {
     return section({
-      theme: "reads",
       label: "Interesting reads",
       body: `<div style="font-size:13px;color:${MUTED};">No notable headlines surfaced today.</div>`,
     });
@@ -173,7 +157,6 @@ export function readsSection(
     .join("");
 
   return section({
-    theme: "reads",
     label: "Interesting reads",
     body: cards,
     note:

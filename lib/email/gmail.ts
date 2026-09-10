@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import type { RenderedEmail } from "./emailTheme";
 
 function requiredEnv(name: string): string {
   const value = process.env[name];
@@ -18,11 +19,7 @@ function getAppPassword(): string {
 // a third party like SES, so SPF/DKIM/DMARC are naturally aligned to
 // gmail.com — no domain to buy or verify, and no spoofing signal for
 // Gmail's spam filter to flag.
-export async function sendDigestEmail(params: {
-  subject: string;
-  html: string;
-  text: string;
-}): Promise<void> {
+export async function sendDigestEmail(params: RenderedEmail): Promise<void> {
   const user = requiredEnv("DIGEST_GMAIL_USER");
   const recipient = requiredEnv("DIGEST_RECIPIENT_EMAIL");
   const pass = getAppPassword();

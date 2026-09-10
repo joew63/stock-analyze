@@ -1,5 +1,15 @@
 import * as finnhub from "@/lib/providers/finnhub";
+import { clamp } from "@/lib/util";
 import type { DigestRow, MarketBenchmark, MarketBriefing, MarketSentiment } from "./types";
+
+// Mean daily % change across benchmarks; 0 when the list is empty. Shared by
+// the briefing summary, the daily sentiment gauge, and the midday pulse.
+export function averageChangePercent(
+  benchmarks: { changePercent: number }[]
+): number {
+  if (benchmarks.length === 0) return 0;
+  return benchmarks.reduce((s, b) => s + b.changePercent, 0) / benchmarks.length;
+}
 
 // Liquid ETFs, not index tickers (^GSPC etc.) — Finnhub's free quote
 // endpoint is reliable for common stocks/ETFs but flaky for raw indices.
@@ -29,8 +39,7 @@ export async function fetchMarketBriefing(): Promise<MarketBriefing> {
 
   const leader = [...benchmarks].sort((a, b) => b.changePercent - a.changePercent)[0];
   const laggard = [...benchmarks].sort((a, b) => a.changePercent - b.changePercent)[0];
-  const avgChange =
-    benchmarks.reduce((s, b) => s + b.changePercent, 0) / benchmarks.length;
+  const avgChange = averageChangePercent(benchmarks);
   const direction = avgChange > 0.1 ? "higher" : avgChange < -0.1 ? "lower" : "roughly flat";
 
   const summary =
@@ -77,14 +86,11 @@ export function computeMarketSentiment(
   const oversoldCount = rows.filter((r) => r.rsi <= OVERSOLD_RSI).length;
   const overboughtCount = rows.filter((r) => r.rsi >= OVERBOUGHT_RSI).length;
 
-  const benchmarkAvgChange =
-    benchmarks.length > 0
-      ? benchmarks.reduce((s, b) => s + b.changePercent, 0) / benchmarks.length
-      : 0;
+  const benchmarkAvgChange = averageChangePercent(benchmarks);
 
   const breadthScore = breadthPct;
-  const benchmarkScore = Math.max(0, Math.min(100, 50 + benchmarkAvgChange * 10));
-  const rsiScore = Math.max(0, Math.min(100, avgRsi));
+  const benchmarkScore = clamp(50 + benchmarkAvgChange * 10, 0, 100);
+  const rsiScore = clamp(avgRsi, 0, 100);
   const score = 0.4 * breadthScore + 0.3 * benchmarkScore + 0.3 * rsiScore;
 
   const label: MarketSentiment["label"] = score >= 60 ? "Bullish" : score <= 40 ? "Bearish" : "Neutral";

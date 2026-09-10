@@ -1,6 +1,7 @@
 import * as finnhub from "@/lib/providers/finnhub";
+import { clamp, mapWithConcurrency } from "@/lib/util";
 import { DEFAULT_WATCHLIST } from "./watchlist";
-import { fetchMarketBriefing } from "./market";
+import { averageChangePercent, fetchMarketBriefing } from "./market";
 import { fetchNewsHighlights } from "./news";
 import type {
   DigestSkip,
@@ -14,23 +15,6 @@ const MAX_MOVERS = 5;
 // A midday ping is a glance, not a read — a few market-wide headlines only,
 // no per-symbol news feeds (the morning digest does the deeper pass).
 const MIDDAY_NEWS_COUNT = 3;
-
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<R>
-): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let next = 0;
-  async function worker() {
-    while (next < items.length) {
-      const i = next++;
-      results[i] = await fn(items[i]);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-  return results;
-}
 
 interface QuoteOutcome {
   quote: MiddayQuote | null;
@@ -92,7 +76,7 @@ function computeMiddayPulse(
   const breadthPct = (upCount / quotes.length) * 100;
 
   const breadthScore = breadthPct;
-  const benchmarkScore = Math.max(0, Math.min(100, 50 + benchmarkAvgChange * 10));
+  const benchmarkScore = clamp(50 + benchmarkAvgChange * 10, 0, 100);
   const score = 0.6 * breadthScore + 0.4 * benchmarkScore;
 
   const label: MiddayPulse["label"] =
@@ -140,11 +124,7 @@ export async function runMiddayScan(
     .slice(-MAX_MOVERS)
     .reverse();
 
-  const benchmarkAvgChange =
-    marketBriefing.benchmarks.length > 0
-      ? marketBriefing.benchmarks.reduce((s, b) => s + b.changePercent, 0) /
-        marketBriefing.benchmarks.length
-      : 0;
+  const benchmarkAvgChange = averageChangePercent(marketBriefing.benchmarks);
 
   const pulse = computeMiddayPulse(quotes, benchmarkAvgChange);
 

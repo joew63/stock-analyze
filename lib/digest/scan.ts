@@ -1,7 +1,8 @@
 import { gradeStock, type StockGrades } from "@/lib/grading";
-import { computeRSI } from "@/lib/backtest/indicators";
-import { computeProjection } from "@/lib/projections/trend";
+import { computeRSI } from "@/lib/indicators";
+import { computeProjection } from "@/lib/projection";
 import { fiftyTwoWeekRange } from "@/lib/priceStats";
+import { byDateAsc, clamp, mapWithConcurrency } from "@/lib/util";
 import { fetchSignalData } from "./fetchSignalData";
 import { buildThesis, buildCaution, summarizeBusiness } from "./thesis";
 import { DEFAULT_WATCHLIST } from "./watchlist";
@@ -17,27 +18,6 @@ const MAX_STANDOUTS = 7;
 const FACTOR_STRONG_THRESHOLD = 60;
 const CONCURRENCY = 5;
 const PROJECTION_HORIZON_DAYS = 30;
-
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<R>
-): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let next = 0;
-  async function worker() {
-    while (next < items.length) {
-      const i = next++;
-      results[i] = await fn(items[i]);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-  return results;
-}
-
-function clamp(n: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, n));
-}
 
 interface ScanOutcome {
   row: DigestRow | null;
@@ -61,7 +41,7 @@ async function scanSymbol(symbol: string): Promise<ScanOutcome> {
     return { row: null, skip: { symbol, reason } };
   }
 
-  const sorted = [...priceHistory].sort((a, b) => (a.date < b.date ? -1 : 1));
+  const sorted = [...priceHistory].sort(byDateAsc);
   const closes = sorted.map((p) => p.close);
   const rsiSeries = computeRSI(closes, RSI_PERIOD);
   const rsi = rsiSeries[rsiSeries.length - 1];

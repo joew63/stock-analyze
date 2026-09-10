@@ -2,11 +2,10 @@ import * as finnhub from "@/lib/providers/finnhub";
 import * as fmp from "@/lib/providers/fmp";
 import type { StockDataBundle } from "@/lib/providers/types";
 
-// Trimmed fetch for the digest scanner — grading only needs ratios,
-// annual incomeHistory, priceHistory, and earningsSurprises (confirmed by
-// reading lib/grading/index.ts). Skips incomeHistoryQuarterly, news, and
-// recommendationTrend, which the grader never touches — cuts per-symbol
-// calls from 9 (full getStockData bundle) to 6.
+// Trimmed fetch for the digest scanner: quote + profile for display, then
+// the four inputs the grader actually reads (ratios, annual incomeHistory,
+// priceHistory, earningsSurprises — see lib/grading/index.ts). Six calls
+// per symbol, all best-effort via `settle`.
 export interface SignalData {
   bundle: StockDataBundle;
   errors: string[];
@@ -45,10 +44,7 @@ export async function fetchSignalData(rawSymbol: string): Promise<SignalData> {
     profile,
     ratios,
     incomeHistory,
-    incomeHistoryQuarterly: null,
     priceHistory,
-    recommendationTrend: null,
-    news: null,
     earningsSurprises,
     errors,
   };

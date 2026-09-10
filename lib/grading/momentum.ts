@@ -2,6 +2,7 @@ import { MOMENTUM_CURVES } from "./thresholds";
 import { scoreFromCurve } from "./interpolate";
 import { weightedAverage, type GradeResult, type MetricScore } from "./types";
 import { formatPercent } from "./format";
+import { byDateAsc } from "@/lib/util";
 import type { HistoricalPricePoint } from "@/lib/providers/types";
 
 function returnOverTradingDays(
@@ -35,7 +36,7 @@ export function gradeMomentum(
     };
   }
 
-  const sorted = [...priceHistory].sort((a, b) => (a.date < b.date ? -1 : 1));
+  const sorted = [...priceHistory].sort(byDateAsc);
   const latestClose = sorted[sorted.length - 1].close;
 
   const return1m = returnOverTradingDays(sorted, 21);

@@ -1,4 +1,5 @@
 import { cached, TTL } from "@/lib/cache";
+import { byDateAsc } from "@/lib/util";
 import type {
   CompanyProfile,
   FundamentalRatios,
@@ -207,6 +208,6 @@ export async function getHistoricalPrices(
         };
       })
       .filter((p) => p.date && p.close > 0)
-      .sort((a, b) => (a.date < b.date ? -1 : 1));
+      .sort(byDateAsc);
   });
 }

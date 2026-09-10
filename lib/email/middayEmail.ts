@@ -1,35 +1,22 @@
-import type { MiddayPulse, MiddayQuote, MiddayResult } from "@/lib/digest/types";
+import type { MiddayQuote, MiddayResult } from "@/lib/digest/types";
 import {
   BODY,
   fmtCurrency,
   fmtPct,
   INK,
   MUTED,
-  UP,
-  DOWN,
   changeColor,
-  escapeHtml,
   footnote,
   h1,
   page,
   readsSection,
   relativeTime,
   section,
+  type RenderedEmail,
 } from "./emailTheme";
+import { benchmarkTable, gaugeBadge, skippedList } from "./fragments";
 
-function pulseColor(label: MiddayPulse["label"]): string {
-  if (label === "Bullish") return UP;
-  if (label === "Bearish") return DOWN;
-  return MUTED;
-}
-
-export interface RenderedMiddayEmail {
-  subject: string;
-  html: string;
-  text: string;
-}
-
-export function renderMiddayEmail(result: MiddayResult): RenderedMiddayEmail {
+export function renderMiddayEmail(result: MiddayResult): RenderedEmail {
   const subject = `☀️ afternoon - ${result.pulse.label} sentiment`;
 
   return {
@@ -61,54 +48,23 @@ function moverTable(quotes: MiddayQuote[]): string {
 }
 
 function renderHtml(result: MiddayResult): string {
-  const benchRows = result.marketBriefing.benchmarks
-    .map(
-      (b) => `
-      <tr>
-        <td style="padding:5px 14px 5px 0;font-size:13px;color:${MUTED};">${b.label}</td>
-        <td style="padding:5px 14px 5px 0;font-size:13px;color:${INK};text-align:right;">${fmtCurrency(
-          b.price
-        )}</td>
-        <td style="padding:5px 0;font-size:13px;font-weight:700;text-align:right;color:${changeColor(
-          b.changePercent
-        )};">${fmtPct(b.changePercent)}</td>
-      </tr>`
-    )
-    .join("");
-
-  const pulse = result.pulse;
-  const pColor = pulseColor(pulse.label);
-
   const parts = [
     h1("☀️ afternoon"),
     section({
-      theme: "briefing",
       label: "Benchmarks",
       body: `
-        <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">${benchRows}</table>
+        ${benchmarkTable(result.marketBriefing.benchmarks)}
         <div style="margin-top:10px;font-size:13px;color:${BODY};line-height:1.55;">${result.marketBriefing.summary}</div>`,
     }),
     section({
-      theme: "sentiment",
       label: "Intraday pulse",
-      body: `
-        <div style="margin-bottom:8px;">
-          <span style="display:inline-block;padding:3px 11px;border-radius:999px;background:${pColor};color:#ffffff;font-size:12px;font-weight:700;letter-spacing:.02em;">${
-            pulse.label
-          }</span>
-          <span style="margin-left:8px;font-size:12px;color:${MUTED};">${pulse.score.toFixed(
-            0
-          )}/100</span>
-        </div>
-        <div style="font-size:13px;color:${BODY};line-height:1.55;">${pulse.summary}</div>`,
+      body: gaugeBadge(result.pulse),
     }),
     section({
-      theme: "gainers",
       label: `Top gainers${result.gainers.length ? ` · ${result.gainers.length}` : ""}`,
       body: moverTable(result.gainers),
     }),
     section({
-      theme: "losers",
       label: `Top losers${result.losers.length ? ` · ${result.losers.length}` : ""}`,
       body: moverTable(result.losers),
     }),
@@ -125,11 +81,8 @@ function renderHtml(result: MiddayResult): string {
   if (result.skipped.length > 0) {
     parts.push(
       section({
-        theme: "skipped",
         label: "No live quote",
-        body: `<div style="font-size:12px;color:${MUTED};line-height:1.6;">${result.skipped
-          .map((s) => `${s.symbol} (${escapeHtml(s.reason)})`)
-          .join(" &nbsp;·&nbsp; ")}</div>`,
+        body: skippedList(result.skipped),
       })
     );
   }

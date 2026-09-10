@@ -1,3 +1,4 @@
+import { byDateAsc } from "@/lib/util";
 import type { HistoricalPricePoint } from "@/lib/providers/types";
 
 export interface ProjectionPoint {
@@ -43,7 +44,7 @@ export function computeProjection(
     };
   }
 
-  const sorted = [...priceHistory].sort((a, b) => (a.date < b.date ? -1 : 1));
+  const sorted = [...priceHistory].sort(byDateAsc);
   const window = sorted.slice(-Math.min(lookbackDays, sorted.length));
   const closes = window.map((p) => p.close);
 
